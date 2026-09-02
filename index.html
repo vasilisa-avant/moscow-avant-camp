@@ -75,6 +75,11 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .slot.secondary .av{width:22px}
 .slot.secondary .av img,.slot.secondary .av .initial{width:18px;height:18px;font-size:8px}
 .slot.secondary .av span{max-width:24px;font-size:7px}
+.slot-marker{position:absolute;left:0;right:0;border-top:1px dashed rgba(0,0,0,.4);pointer-events:none}
+.slot-marker-label{position:absolute;top:-6px;right:3px;font-size:7px;line-height:1;background:rgba(255,255,255,.85);padding:0 3px;color:var(--ink-2);white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+.ptimes{margin:2px 0 8px}
+.ptime-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px solid var(--line-2)}
+.ptime-row input[type=time]{border:1px solid var(--line);padding:3px 4px;font:300 11px Ubuntu}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);margin:14px 0 0}
 .legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border-left:3px solid}
 .filterbar{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
@@ -367,7 +372,9 @@ function slotAvatarsHtml(s){
     var p = byId(STATE.participants, pid);
     if (!p) return;
     var pSrc = photoSrc(p.photo_id);
-    out += '<div class="av">' + (pSrc ? '<img src="'+esc(pSrc)+'">' : '<div class="initial">'+esc(p.name[0])+'</div>') + '<span>'+esc(p.name.split(' ')[0])+'</span></div>';
+    var pt = (s.participant_times||{})[pid];
+    var label = pt ? (pt + ' ' + p.name.split(' ')[0]) : p.name.split(' ')[0];
+    out += '<div class="av">' + (pSrc ? '<img src="'+esc(pSrc)+'">' : '<div class="initial">'+esc(p.name[0])+'</div>') + '<span>'+esc(label)+'</span></div>';
   });
   return out ? '<div class="avatars">'+out+'</div>' : '';
 }
@@ -433,8 +440,34 @@ function buildCalendar(editable){
       var style = 'top:' + top + 'px;height:' + h + 'px;' +
         'left:calc(' + lPct + '% + 3px);width:calc(' + wPct + '% - 6px)';
       var fullLabel = catLabel(s) + (s.shoot_kind ? ' · ' + s.shoot_kind : '');
+      // пунктирные метки на временной шкале блока — на каком часу блока
+      // снимается конкретная модель. Одно время — общая линия, имена рядом.
+      var markers = '';
+      if (s.category === 'shoot' && s.participant_times) {
+        var byTime = {};
+        (s.participant_ids||[]).forEach(function(pid){
+          var t = s.participant_times[pid];
+          if (!t) return;
+          (byTime[t] = byTime[t] || []).push(pid);
+        });
+        var times = Object.keys(byTime).sort();
+        markers = times.map(function(t){
+          var relTop = topPx(t) - top;
+          if (relTop < 2 || relTop > h - 2) return '';
+          var names = byTime[t].map(function(pid){ var pp = byId(STATE.participants, pid); return pp ? pp.name.split(' ')[0] : ''; }).join(', ');
+          return '<div class="slot-marker" style="top:' + relTop + 'px"><span class="slot-marker-label">' + esc(t + ' ' + names) + '</span></div>';
+        }).join('');
+      }
+      if (s.category === 'shoot' && s.participant_times) {
+        var timesTxt = (s.participant_ids||[]).map(function(pid){
+          var pp = byId(STATE.participants, pid), t = s.participant_times[pid];
+          return t ? (t + ' ' + (pp ? pp.name : '')) : null;
+        }).filter(Boolean).join(', ');
+        if (timesTxt) fullLabel += ' — ' + timesTxt;
+      }
       var shownLabel = secondary ? catLabelShort(s) : fullLabel;
       return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '" title="' + esc(s.start + '–' + s.end + ' ' + fullLabel) + '">' +
+        markers +
         '<div class="t">' + s.start + '–' + s.end + '</div>' +
         '<div class="ti">' + esc(shownLabel) + '</div>' +
         slotAvatarsHtml(s) +
@@ -753,7 +786,8 @@ function renderChecklist(hostId, listName, items, editable){
 function openSlotModal(day, startY, existing){
   var s = existing || { id: null, day: day || STATE.days[0].key, start: startY ? snapTime(startY) : '10:00',
     end: '11:00', category: 'shoot', subtype: STATE.shootSubtypes[0], title: '',
-    participant_ids: [], client_id: '', shoot_kind: '', notes: '' };
+    participant_ids: [], client_id: '', shoot_kind: '', notes: '', participant_times: {} };
+  s.participant_times = s.participant_times || {};
 
   var root = document.getElementById('modalRoot');
   root.innerHTML = '<div class="modal-bg"><div class="modal"><h3>' + (existing ? 'Слот в календаре' : 'Новый слот') + '</h3>' +
@@ -786,8 +820,9 @@ function openSlotModal(day, startY, existing){
         '<label>Вид съёмки (если фотограф)</label><select id="mShootKind"><option value="">—</option>' + STATE.shootKinds.map(function(x){
           return '<option' + (s.shoot_kind===x?' selected':'') + '>' + esc(x) + '</option>';
         }).join('') + '</select>' +
-        '<label>Модель (необязательно — можно добавить позже отдельным слотом на конкретное время)</label>' +
-        '<div class="multi">' + participantPicker(s.participant_ids, true) + '</div>';
+        '<label>Модели (можно выбрать несколько — и указать точное время съёмки каждой ниже)</label>' +
+        '<div class="multi">' + participantPicker(s.participant_ids, false) + '</div>' +
+        participantTimesHtml();
     } else if (s.category === 'class') {
       f.innerHTML =
         '<label>Тип класса</label><select id="mSubtype">' + STATE.classTypes.map(function(x){
@@ -810,14 +845,33 @@ function openSlotModal(day, startY, existing){
       return '<span class="pill' + (on?' on':'') + '" data-pp="' + p.id + '" data-single="' + (single?'1':'0') + '">' + esc(p.name) + '</span>';
     }).join('');
   }
+  // время съёмки каждой конкретной модели внутри общего блока (например,
+  // Лев снимает 10:00–18:00, а у Милана — ровно 11:00) — чтобы на календаре
+  // было видно пунктиром, когда именно её час
+  function participantTimesHtml(){
+    if (!s.participant_ids.length) return '';
+    return '<div class="ptimes">' + s.participant_ids.map(function(id){
+      var p = byId(STATE.participants, id);
+      return '<div class="ptime-row"><span>' + esc(p ? p.name : id) + '</span>' +
+        '<input type="time" data-ptime="' + id + '" value="' + esc(s.participant_times[id] || '') + '"></div>';
+    }).join('') + '</div>';
+  }
+  function syncPTimes(){
+    Array.prototype.forEach.call(root.querySelectorAll('[data-ptime]'), function(el){
+      var id = el.getAttribute('data-ptime');
+      if (el.value) s.participant_times[id] = el.value; else delete s.participant_times[id];
+    });
+  }
   function bindPicker(){
     Array.prototype.forEach.call(root.querySelectorAll('[data-pp]'), function(el){
       el.onclick = function(){
+        syncPTimes();
         var id = el.getAttribute('data-pp'), single = el.getAttribute('data-single') === '1';
         if (single) { s.participant_ids = el.classList.contains('on') ? [] : [id]; }
         else {
           var i = s.participant_ids.indexOf(id);
-          if (i >= 0) s.participant_ids.splice(i,1); else s.participant_ids.push(id);
+          if (i >= 0) { s.participant_ids.splice(i,1); delete s.participant_times[id]; }
+          else s.participant_ids.push(id);
         }
         renderFields();
       };
@@ -828,6 +882,7 @@ function openSlotModal(day, startY, existing){
 
   Array.prototype.forEach.call(root.querySelectorAll('[data-cat]'), function(el){
     el.onclick = function(){
+      syncPTimes();
       s.category = el.getAttribute('data-cat');
       s.subtype = s.category === 'shoot' ? STATE.shootSubtypes[0] : s.category === 'class' ? STATE.classTypes[0] : '';
       Array.prototype.forEach.call(root.querySelectorAll('[data-cat]'), function(x){ x.classList.toggle('on', x===el); });
@@ -844,6 +899,7 @@ function openSlotModal(day, startY, existing){
   };
 
   document.getElementById('mSave').onclick = function(){
+    syncPTimes();
     s.day = document.getElementById('mDay').value;
     s.start = document.getElementById('mStart').value;
     s.end = document.getElementById('mEnd').value;
