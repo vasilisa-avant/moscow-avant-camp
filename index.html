@@ -45,6 +45,13 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .roster-fields select{font:300 11px Ubuntu;border:1px solid var(--line);padding:3px;margin:2px 0 8px;width:100%}
 .roster-fields .chk{display:flex;align-items:center;gap:6px;margin:2px 0 8px;font-size:11px}
 .roster-fields .mini{font-size:9px;color:var(--ink-3);text-transform:uppercase;cursor:pointer;text-decoration:underline}
+.roster-fields input[type=time]{width:100%;border:none;border-bottom:1px solid var(--line);font:300 11px Ubuntu;padding:4px 0;margin:2px 0 8px;background:none}
+.roster-fields .tt-row{display:flex;gap:10px}
+.roster-fields .tt-row>div{flex:1;min-width:0}
+.roster-fields .ticket-row{display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap}
+.roster-fields .file-btn{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);cursor:pointer;text-decoration:underline}
+.roster-fields .file-btn input[type=file]{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0}
+.roster-fields .ticket-row a{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-3)}
 .side .btn{width:100%;margin-top:10px}
 .cal-wrap{flex:1;min-width:0;overflow-x:auto}
 .cal{display:grid;grid-template-columns:56px repeat(4,1fr);min-width:780px}
@@ -83,6 +90,19 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);margin:14px 0 0}
 .legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border-left:3px solid}
 .filterbar{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.travel-summary{border:1px solid var(--line-2);margin-bottom:18px}
+.travel-summary h2{margin:0;padding:10px 12px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:8px}
+.ts-count{background:var(--accent);color:#fff;font-size:9px;letter-spacing:0;padding:1px 6px;border-radius:8px}
+.ts-scroll{overflow-x:auto}
+.ts-table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}
+.ts-table th{text-align:left;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);padding:6px 12px;border-bottom:1px solid var(--line-2)}
+.ts-table td{padding:7px 12px;border-bottom:1px solid var(--line-2)}
+.ts-table tr:last-child td{border-bottom:none}
+.ts-table tr{cursor:pointer}
+.ts-table tr:hover td{background:#fafafa}
+.ts-table td:first-child{text-transform:uppercase;letter-spacing:.3px;font-size:11px}
+.ts-empty{color:var(--ink-3)}
+.ts-ticket{font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:var(--accent);text-decoration:underline;margin-left:4px;white-space:nowrap}
 select,.btn{font:400 11px Ubuntu,sans-serif;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--line);background:#fff;padding:7px 12px;cursor:pointer;color:var(--ink)}
 .btn:hover{border-color:var(--accent);color:var(--accent)}
 .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -229,7 +249,11 @@ function load(){
     render();
     startPolling();
     var ids = [];
-    STATE.participants.forEach(function(p){ if (p.photo_id) ids.push(p.photo_id); });
+    STATE.participants.forEach(function(p){
+      if (p.photo_id) ids.push(p.photo_id);
+      if (p.arrival_ticket_id) ids.push(p.arrival_ticket_id);
+      if (p.departure_ticket_id) ids.push(p.departure_ticket_id);
+    });
     STATE.clients.forEach(function(c){ if (c.logo_id) ids.push(c.logo_id); });
     if (ids.length) {
       apiCall('getImages', ids).then(function(images){
@@ -490,15 +514,54 @@ function buildCalendar(editable){
   }).join('');
 
   var legend = editable
-    ? '<span><i style="border-color:var(--cat-lev)"></i>Лев Яшин</span>' +
+    ? '<span><i style="border-color:var(--cat-lev)"></i>Лев Ефимов</span>' +
       '<span><i style="border-color:var(--cat-shoot)"></i>Визажист / парикмахер / стилист / второй фотограф</span>' +
       '<span><i style="border-color:var(--cat-class)"></i>Мастер-классы</span>' +
       '<span><i style="border-color:var(--cat-client)"></i>Клиенты</span>'
-    : '<span><i style="border-color:var(--cat-lev)"></i>Лев Яшин</span>' +
+    : '<span><i style="border-color:var(--cat-lev)"></i>Лев Ефимов</span>' +
       '<span><i style="border-color:var(--cat-shoot)"></i>Визажист / парикмахер / стилист / второй фотограф — видно, только если вы в неё добавлены</span>' +
       '<span><i style="border-color:var(--cat-class)"></i>Мастер-классы</span>';
   return '<div class="cal">' + head + gutter + cols + '</div>' +
     '<div class="legend">' + legend + '</div>';
+}
+
+/* ---------- сводка по приезду/отъезду ---------- */
+
+function travelSortKey_(p){
+  var m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec((p.arrival_date||'').trim());
+  if (!m) return '9'; // без даты — в конец списка
+  var tm = /^(\d{1,2}):(\d{2})$/.exec((p.arrival_time||'').trim());
+  var pad = function(v){ v = String(v); return v.length===1 ? '0'+v : v; };
+  return m[3] + pad(m[2]) + pad(m[1]) + (tm ? pad(tm[1]) + pad(tm[2]) : '0000');
+}
+
+function buildTravelSummary(){
+  var travelers = STATE.participants.filter(function(p){ return p.travel; });
+  if (!travelers.length) return '';
+  travelers = travelers.slice().sort(function(a,b){
+    var ka = travelSortKey_(a), kb = travelSortKey_(b);
+    return ka < kb ? -1 : ka > kb ? 1 : a.name.localeCompare(b.name, 'ru');
+  });
+  var rows = travelers.map(function(p){
+    var arr = [p.arrival_date, p.arrival_time].filter(Boolean).join(' ');
+    var dep = [p.departure_date, p.departure_time].filter(Boolean).join(' ');
+    return '<tr data-p="' + p.id + '">' +
+      '<td>' + esc(p.name) + '</td>' +
+      '<td>' + (arr ? esc(arr) : '<span class="ts-empty">—</span>') +
+        (p.arrival_ticket_id ? ' <a href="' + esc(photoSrc(p.arrival_ticket_id)) + '" target="_blank" rel="noopener" class="ts-ticket">билет↗</a>' : '') + '</td>' +
+      '<td>' + (p.moscow_address ? esc(p.moscow_address) : '<span class="ts-empty">—</span>') + '</td>' +
+      '<td>' + (p.met_by ? esc(p.met_by) : '<span class="ts-empty">—</span>') + '</td>' +
+      '<td>' + (dep ? esc(dep) : '<span class="ts-empty">—</span>') +
+        (p.departure_ticket_id ? ' <a href="' + esc(photoSrc(p.departure_ticket_id)) + '" target="_blank" rel="noopener" class="ts-ticket">билет↗</a>' : '') + '</td>' +
+    '</tr>';
+  }).join('');
+  return '<div class="travel-summary">' +
+    '<h2>Приезды и отъезды <span class="ts-count">' + travelers.length + '</span></h2>' +
+    '<div class="ts-scroll"><table class="ts-table">' +
+      '<thead><tr><th>Модель</th><th>Приезд</th><th>Где живёт</th><th>Кто встречает</th><th>Отъезд</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>' +
+  '</div>';
 }
 
 /* ---------- вид агента ---------- */
@@ -516,6 +579,7 @@ function renderAgent(){
         '<button class="btn" id="addClient">+ Добавить клиента</button>' +
       '</div>' +
       '<div class="cal-wrap">' +
+        '<div id="travelSummaryHost"></div>' +
         '<div class="filterbar">' +
           '<button class="btn primary" id="addSlot">+ Добавить в календарь</button>' +
           (FILTER ? '<button class="btn" id="clearFilter">✕ Сбросить фильтр (' + esc((byId(STATE.participants, FILTER)||{}).name||'') + ')</button>' : '') +
@@ -532,6 +596,15 @@ function renderAgent(){
   renderRoster();
   renderClientRoster();
   document.getElementById('calHost').innerHTML = buildCalendar(true);
+  document.getElementById('travelSummaryHost').innerHTML = buildTravelSummary();
+  Array.prototype.forEach.call(document.querySelectorAll('.ts-table [data-p]'), function(tr){
+    tr.addEventListener('click', function(ev){
+      if (ev.target.closest('a')) return;
+      var pid = tr.getAttribute('data-p');
+      FILTER = (FILTER === pid) ? null : pid;
+      renderAgent();
+    });
+  });
   renderChecklist('chkModelHost', 'model', STATE.checklistModel, true);
   renderChecklist('chkAgentHost', 'agent', STATE.checklistAgent, true);
 
@@ -574,6 +647,24 @@ function renderRoster(){
         '<label>Кто встречает</label>' +
         '<input type="text" placeholder="имя, если встречают" value="' + esc(p.met_by) + '" data-field="met_by" data-id="' + p.id + '">' +
         '<div class="chk"><input type="checkbox" ' + (p.travel?'checked':'') + ' data-field="travel" data-id="' + p.id + '"> <label style="margin:0">Приезжая</label></div>' +
+        '<div class="tt-row">' +
+          '<div><label>Приезд, дата</label><input type="text" placeholder="дд.мм.гггг" value="' + esc(p.arrival_date) + '" data-field="arrival_date" data-id="' + p.id + '"></div>' +
+          '<div><label>время</label><input type="time" value="' + esc(p.arrival_time) + '" data-field="arrival_time" data-id="' + p.id + '"></div>' +
+        '</div>' +
+        '<div class="ticket-row">' +
+          '<label class="file-btn">' + (p.arrival_ticket_id ? 'Заменить билет прилёта' : 'Загрузить билет прилёта') +
+            '<input type="file" accept="image/*,.pdf" data-ticket-upload="arrival" data-id="' + p.id + '"></label>' +
+          (p.arrival_ticket_id ? '<a href="' + esc(photoSrc(p.arrival_ticket_id)) + '" target="_blank" rel="noopener">билет ↗</a>' : '') +
+        '</div>' +
+        '<div class="tt-row">' +
+          '<div><label>Отъезд, дата</label><input type="text" placeholder="дд.мм.гггг" value="' + esc(p.departure_date) + '" data-field="departure_date" data-id="' + p.id + '"></div>' +
+          '<div><label>время</label><input type="time" value="' + esc(p.departure_time) + '" data-field="departure_time" data-id="' + p.id + '"></div>' +
+        '</div>' +
+        '<div class="ticket-row">' +
+          '<label class="file-btn">' + (p.departure_ticket_id ? 'Заменить билет отъезда' : 'Загрузить билет отъезда') +
+            '<input type="file" accept="image/*,.pdf" data-ticket-upload="departure" data-id="' + p.id + '"></label>' +
+          (p.departure_ticket_id ? '<a href="' + esc(photoSrc(p.departure_ticket_id)) + '" target="_blank" rel="noopener">билет ↗</a>' : '') +
+        '</div>' +
         '<label>Статус участия</label>' +
         '<select data-field="status" data-id="' + p.id + '">' +
           '<option' + (p.status==='обязательно'?' selected':'') + '>обязательно</option>' +
@@ -610,6 +701,28 @@ function renderRoster(){
         var p = byId(STATE.participants, id); if (p) p[field] = val;
         if (field === 'travel') renderRoster();
       });
+    });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-ticket-upload]'), function(el){
+    el.addEventListener('click', function(ev){ ev.stopPropagation(); });
+    el.addEventListener('change', function(){
+      var file = el.files && el.files[0];
+      if (!file) return;
+      var id = el.getAttribute('data-id'), kind = el.getAttribute('data-ticket-upload');
+      var reader = new FileReader();
+      reader.onload = function(){
+        var dataUrl = reader.result;
+        var base64 = String(dataUrl).split(',')[1] || '';
+        var mime = file.type || 'application/octet-stream';
+        call('uploadParticipantTicket', TOKEN, id, kind, base64, mime).then(function(res){
+          var p = byId(STATE.participants, id);
+          if (p) p[kind + '_ticket_id'] = res.id;
+          STATE.images[res.id] = dataUrl;
+          flashSaved();
+          renderRoster();
+        });
+      };
+      reader.readAsDataURL(file);
     });
   });
   Array.prototype.forEach.call(host.querySelectorAll('[data-del-p]'), function(el){
