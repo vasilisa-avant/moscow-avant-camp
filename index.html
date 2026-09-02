@@ -52,6 +52,7 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .roster-fields .file-btn{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);cursor:pointer;text-decoration:underline}
 .roster-fields .file-btn input[type=file]{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0}
 .roster-fields .ticket-row a{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-3)}
+.roster-fields .paste-hint{font-size:9px;color:var(--ink-3)}
 .side .btn{width:100%;margin-top:10px}
 .cal-wrap{flex:1;min-width:0;overflow-x:auto}
 .cal{display:grid;grid-template-columns:56px repeat(4,1fr);min-width:780px}
@@ -843,6 +844,11 @@ function renderClientRoster(){
         '<div class="roster-name">' + esc(c.name) + '</div>' +
       '</div>' +
       '<div class="roster-fields">' +
+        '<div class="ticket-row">' +
+          '<label class="file-btn">' + (c.logo_id ? 'Заменить лого' : 'Загрузить лого') +
+            '<input type="file" accept="image/*" data-logo-upload data-id="' + c.id + '"></label>' +
+          '<span class="paste-hint">или вставь картинку сюда — Ctrl+V</span>' +
+        '</div>' +
         '<div class="mini" data-del-c="' + c.id + '" style="margin-top:8px">Удалить клиента</div>' +
       '</div>' +
     '</div>';
@@ -851,6 +857,28 @@ function renderClientRoster(){
     row.addEventListener('click', function(ev){
       if (ev.target.closest('input')) return;
       row.classList.toggle('open');
+    });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-logo-upload]'), function(el){
+    el.addEventListener('click', function(ev){ ev.stopPropagation(); });
+    el.addEventListener('change', function(){
+      var file = el.files && el.files[0];
+      if (!file) return;
+      var id = el.getAttribute('data-id');
+      var reader = new FileReader();
+      reader.onload = function(){
+        var dataUrl = reader.result;
+        var base64 = String(dataUrl).split(',')[1] || '';
+        var mime = file.type || 'application/octet-stream';
+        call('uploadClientLogo', TOKEN, id, base64, mime).then(function(res){
+          var c = byId(STATE.clients, id);
+          if (c) c.logo_id = res.id;
+          STATE.images[res.id] = dataUrl;
+          flashSaved();
+          renderClientRoster();
+        });
+      };
+      reader.readAsDataURL(file);
     });
   });
   Array.prototype.forEach.call(host.querySelectorAll('[data-del-c]'), function(el){
@@ -1066,6 +1094,38 @@ document.addEventListener('click', function(ev){
     var rect = col.getBoundingClientRect();
     var y = ev.clientY - rect.top;
     openSlotModal(col.getAttribute('data-day'), y, null);
+  }
+});
+
+// Вставка лого клиента по Ctrl+V — работает, пока открыта (раскрыта) карточка
+// клиента: копируешь картинку откуда угодно и просто жмёшь Ctrl+V на странице.
+document.addEventListener('paste', function(ev){
+  var openRow = document.querySelector('#clientRoster .roster-row.open');
+  if (!openRow) return;
+  var items = (ev.clipboardData || window.clipboardData || {}).items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== 0) continue;
+    var file = items[i].getAsFile();
+    if (!file) continue;
+    ev.preventDefault();
+    var id = openRow.getAttribute('data-c');
+    var reader = new FileReader();
+    reader.onload = function(){
+      var dataUrl = reader.result;
+      var base64 = String(dataUrl).split(',')[1] || '';
+      var mime = file.type || 'image/png';
+      call('uploadClientLogo', TOKEN, id, base64, mime).then(function(res){
+        var c = byId(STATE.clients, id);
+        if (c) c.logo_id = res.id;
+        STATE.images[res.id] = dataUrl;
+        flashSaved();
+        toast('Лого вставлено');
+        renderClientRoster();
+      });
+    };
+    reader.readAsDataURL(file);
+    break;
   }
 });
 
