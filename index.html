@@ -655,28 +655,30 @@ function renderRoster(){
       '<div class="roster-fields">' +
         '<label>Доступность по дням</label>' +
         '<textarea rows="3" placeholder="06.09 — ... 07.09 — ..." data-field="availability" data-id="' + p.id + '">' + esc(p.availability) + '</textarea>' +
-        '<label>Где разместят в Москве (видно при наведении, если приезжая)</label>' +
-        '<input type="text" value="' + esc(p.moscow_address) + '" data-field="moscow_address" data-id="' + p.id + '">' +
-        '<label>Кто встречает</label>' +
-        '<input type="text" placeholder="имя, если встречают" value="' + esc(p.met_by) + '" data-field="met_by" data-id="' + p.id + '">' +
         '<div class="chk"><input type="checkbox" ' + (p.travel?'checked':'') + ' data-field="travel" data-id="' + p.id + '"> <label style="margin:0">Приезжая</label></div>' +
-        '<div class="tt-row">' +
-          '<div><label>Приезд, дата</label><input type="text" placeholder="дд.мм.гггг" value="' + esc(p.arrival_date) + '" data-field="arrival_date" data-id="' + p.id + '"></div>' +
-          '<div><label>время</label><input type="time" value="' + esc(p.arrival_time) + '" data-field="arrival_time" data-id="' + p.id + '"></div>' +
-        '</div>' +
-        '<div class="ticket-row">' +
-          '<label class="file-btn">' + (p.arrival_ticket_id ? 'Заменить билет прилёта' : 'Загрузить билет прилёта') +
-            '<input type="file" accept="image/*,.pdf" data-ticket-upload="arrival" data-id="' + p.id + '"></label>' +
-          (p.arrival_ticket_id ? '<a href="' + esc(photoSrc(p.arrival_ticket_id)) + '" target="_blank" rel="noopener">билет ↗</a>' : '') +
-        '</div>' +
-        '<div class="tt-row">' +
-          '<div><label>Отъезд, дата</label><input type="text" placeholder="дд.мм.гггг" value="' + esc(p.departure_date) + '" data-field="departure_date" data-id="' + p.id + '"></div>' +
-          '<div><label>время</label><input type="time" value="' + esc(p.departure_time) + '" data-field="departure_time" data-id="' + p.id + '"></div>' +
-        '</div>' +
-        '<div class="ticket-row">' +
-          '<label class="file-btn">' + (p.departure_ticket_id ? 'Заменить билет отъезда' : 'Загрузить билет отъезда') +
-            '<input type="file" accept="image/*,.pdf" data-ticket-upload="departure" data-id="' + p.id + '"></label>' +
-          (p.departure_ticket_id ? '<a href="' + esc(photoSrc(p.departure_ticket_id)) + '" target="_blank" rel="noopener">билет ↗</a>' : '') +
+        '<div class="travel-block" style="display:' + (p.travel?'block':'none') + '">' +
+          '<label>Где разместят в Москве</label>' +
+          '<input type="text" value="' + esc(p.moscow_address) + '" data-field="moscow_address" data-id="' + p.id + '">' +
+          '<label>Кто встречает</label>' +
+          '<input type="text" placeholder="имя, если встречают" value="' + esc(p.met_by) + '" data-field="met_by" data-id="' + p.id + '">' +
+          '<div class="tt-row">' +
+            '<div><label>Приезд, дата</label><input type="text" placeholder="дд.мм.гггг" value="' + esc(p.arrival_date) + '" data-field="arrival_date" data-id="' + p.id + '"></div>' +
+            '<div><label>время</label><input type="time" value="' + esc(p.arrival_time) + '" data-field="arrival_time" data-id="' + p.id + '"></div>' +
+          '</div>' +
+          '<div class="ticket-row">' +
+            '<label class="file-btn">' + (p.arrival_ticket_id ? 'Заменить билет прилёта' : 'Загрузить билет прилёта') +
+              '<input type="file" accept="image/*,.pdf" data-ticket-upload="arrival" data-id="' + p.id + '"></label>' +
+            (p.arrival_ticket_id ? '<a href="' + esc(photoSrc(p.arrival_ticket_id)) + '" target="_blank" rel="noopener">билет ↗</a>' : '') +
+          '</div>' +
+          '<div class="tt-row">' +
+            '<div><label>Отъезд, дата</label><input type="text" placeholder="дд.мм.гггг" value="' + esc(p.departure_date) + '" data-field="departure_date" data-id="' + p.id + '"></div>' +
+            '<div><label>время</label><input type="time" value="' + esc(p.departure_time) + '" data-field="departure_time" data-id="' + p.id + '"></div>' +
+          '</div>' +
+          '<div class="ticket-row">' +
+            '<label class="file-btn">' + (p.departure_ticket_id ? 'Заменить билет отъезда' : 'Загрузить билет отъезда') +
+              '<input type="file" accept="image/*,.pdf" data-ticket-upload="departure" data-id="' + p.id + '"></label>' +
+            (p.departure_ticket_id ? '<a href="' + esc(photoSrc(p.departure_ticket_id)) + '" target="_blank" rel="noopener">билет ↗</a>' : '') +
+          '</div>' +
         '</div>' +
         '<label>Статус участия</label>' +
         '<select data-field="status" data-id="' + p.id + '">' +
@@ -714,6 +716,11 @@ function renderRoster(){
         var p = byId(STATE.participants, id); if (p) p[field] = val;
         if (field === 'travel') renderRoster();
       });
+      if (el.getAttribute('data-field') === 'travel') {
+        // мгновенно, не дожидаясь ответа сервера — сохранение выше просто досохранит
+        var block = el.closest('.roster-fields').querySelector('.travel-block');
+        if (block) block.style.display = el.checked ? 'block' : 'none';
+      }
     });
   });
   Array.prototype.forEach.call(host.querySelectorAll('[data-ticket-upload]'), function(el){
@@ -729,9 +736,14 @@ function renderRoster(){
         var mime = file.type || 'application/octet-stream';
         call('uploadParticipantTicket', TOKEN, id, kind, base64, mime).then(function(res){
           var p = byId(STATE.participants, id);
-          if (p) p[kind + '_ticket_id'] = res.id;
+          if (p) {
+            p[kind + '_ticket_id'] = res.id;
+            if (res.parsedDate) p[kind + '_date'] = res.parsedDate;
+            if (res.parsedTime) p[kind + '_time'] = res.parsedTime;
+          }
           STATE.images[res.id] = dataUrl;
           flashSaved();
+          toast(res.parsedDate ? 'Билет загружен, дата/время распознаны' : 'Билет загружен');
           renderRoster();
         });
       };
