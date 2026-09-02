@@ -424,7 +424,7 @@ function buildCalendar(editable){
         return renderBlock(e.s, e.col, e.cols, overlapsAny(shootRanges, e.start, e.end));
       }).join('');
     var clickable = editable ? ' data-day="' + d.key + '"' : '';
-    return '<div class="daycol"' + clickable + '>' + lev + off + blocks + '</div>';
+    return '<div class="daycol"' + clickable + '>' + off + blocks + '</div>';
   }).join('');
 
   var legend = editable
