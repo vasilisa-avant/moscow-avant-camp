@@ -90,7 +90,7 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);margin:14px 0 0}
 .legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border-left:3px solid}
 .filterbar{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
-.travel-summary{border:1px solid var(--line-2);margin-bottom:18px}
+.travel-summary{border:1px solid var(--line-2);margin:22px 0}
 .travel-summary h2{margin:0;padding:10px 12px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:8px}
 .ts-count{background:var(--accent);color:#fff;font-size:9px;letter-spacing:0;padding:1px 6px;border-radius:8px}
 .ts-scroll{overflow-x:auto}
@@ -100,7 +100,9 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .ts-table tr:last-child td{border-bottom:none}
 .ts-table tr{cursor:pointer}
 .ts-table tr:hover td{background:#fafafa}
-.ts-table td:first-child{text-transform:uppercase;letter-spacing:.3px;font-size:11px}
+.ts-model{display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.3px;font-size:11px}
+.ts-av{width:26px;height:26px;flex:none;border-radius:50%;overflow:hidden;background:#eee;display:flex;align-items:center;justify-content:center;font-size:10px;text-transform:uppercase;border:1px solid rgba(0,0,0,.08)}
+.ts-av img{width:100%;height:100%;object-fit:cover;display:block}
 .ts-empty{color:var(--ink-3)}
 .ts-ticket{font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:var(--accent);text-decoration:underline;margin-left:4px;white-space:nowrap}
 select,.btn{font:400 11px Ubuntu,sans-serif;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--line);background:#fff;padding:7px 12px;cursor:pointer;color:var(--ink)}
@@ -527,6 +529,16 @@ function buildCalendar(editable){
 
 /* ---------- сводка по приезду/отъезду ---------- */
 
+var MONTHS_RU_ = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+function humanDT_(d, t){
+  var m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec((d||'').trim());
+  if (!m) return '';
+  var day = parseInt(m[1],10), month = parseInt(m[2],10);
+  var out = day + ' ' + (MONTHS_RU_[month-1] || '');
+  if ((t||'').trim()) out += ', ' + t.trim();
+  return out.trim();
+}
+
 function travelSortKey_(p){
   var m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec((p.arrival_date||'').trim());
   if (!m) return '9'; // без даты — в конец списка
@@ -543,10 +555,11 @@ function buildTravelSummary(){
     return ka < kb ? -1 : ka > kb ? 1 : a.name.localeCompare(b.name, 'ru');
   });
   var rows = travelers.map(function(p){
-    var arr = [p.arrival_date, p.arrival_time].filter(Boolean).join(' ');
-    var dep = [p.departure_date, p.departure_time].filter(Boolean).join(' ');
+    var arr = humanDT_(p.arrival_date, p.arrival_time);
+    var dep = humanDT_(p.departure_date, p.departure_time);
+    var pSrc = photoSrc(p.photo_id);
     return '<tr data-p="' + p.id + '">' +
-      '<td>' + esc(p.name) + '</td>' +
+      '<td class="ts-model"><div class="ts-av">' + (pSrc ? '<img src="'+esc(pSrc)+'">' : '<div class="initial">'+esc(p.name[0])+'</div>') + '</div><span>' + esc(p.name) + '</span></td>' +
       '<td>' + (arr ? esc(arr) : '<span class="ts-empty">—</span>') +
         (p.arrival_ticket_id ? ' <a href="' + esc(photoSrc(p.arrival_ticket_id)) + '" target="_blank" rel="noopener" class="ts-ticket">билет↗</a>' : '') + '</td>' +
       '<td>' + (p.moscow_address ? esc(p.moscow_address) : '<span class="ts-empty">—</span>') + '</td>' +
@@ -579,7 +592,6 @@ function renderAgent(){
         '<button class="btn" id="addClient">+ Добавить клиента</button>' +
       '</div>' +
       '<div class="cal-wrap">' +
-        '<div id="travelSummaryHost"></div>' +
         '<div class="filterbar">' +
           '<button class="btn primary" id="addSlot">+ Добавить в календарь</button>' +
           (FILTER ? '<button class="btn" id="clearFilter">✕ Сбросить фильтр (' + esc((byId(STATE.participants, FILTER)||{}).name||'') + ')</button>' : '') +
@@ -588,6 +600,7 @@ function renderAgent(){
         '<div id="calHost"></div>' +
       '</div>' +
     '</div>' +
+    '<div id="travelSummaryHost"></div>' +
     '<div class="checklists">' +
       '<div class="checklist" id="chkModelHost"><h2>Чек-лист моделей</h2></div>' +
       '<div class="checklist" id="chkAgentHost"><h2>Оргзадачи агента</h2></div>' +
