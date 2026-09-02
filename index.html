@@ -397,8 +397,7 @@ function buildCalendar(editable){
     // оглядкой на всю съёмку целиком (Лев + остальные).
     var isLev = function(s){ return s.category === 'shoot' && s.subtype === STATE.shootSubtypes[0]; };
     var levSlots = daySlots.filter(isLev);
-    var restShootSlots = daySlots.filter(function(s){ return s.category === 'shoot' && !isLev(s); });
-    var nonShootSlots = daySlots.filter(function(s){ return s.category !== 'shoot'; });
+    var restSlots = daySlots.filter(function(s){ return !isLev(s); }); // визажист/класс/клиент — все вместе
     var rangeOf = function(s){ return [toMin(s.start), toMin(s.end)]; };
     var overlapsAny = function(ranges, aStart, aEnd){
       return ranges.some(function(r){ return aStart < r[1] && r[0] < aEnd; });
@@ -423,15 +422,14 @@ function buildCalendar(editable){
     }
 
     var levRanges = levSlots.map(rangeOf);
-    var shootRanges = levRanges.concat(restShootSlots.map(rangeOf));
 
+    // Визажист/класс/клиент делят место МЕЖДУ СОБОЙ поровну, бок о бок, без
+    // наложения друг на друга — и только все вместе подстраиваются (сжимаются
+    // узкой полоской) под Льва, если совпадают с ним по времени.
     var blocks =
       layoutDaySlots(levSlots).map(function(e){ return renderBlock(e.s, e.col, e.cols, false); }).join('') +
-      layoutDaySlots(restShootSlots).map(function(e){
+      layoutDaySlots(restSlots).map(function(e){
         return renderBlock(e.s, e.col, e.cols, overlapsAny(levRanges, e.start, e.end));
-      }).join('') +
-      layoutDaySlots(nonShootSlots).map(function(e){
-        return renderBlock(e.s, e.col, e.cols, overlapsAny(shootRanges, e.start, e.end));
       }).join('');
     var clickable = editable ? ' data-day="' + d.key + '"' : '';
     return '<div class="daycol"' + clickable + '>' + off + blocks + '</div>';
