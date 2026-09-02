@@ -30,6 +30,8 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .roster-row.active .top{outline:2px solid var(--accent);outline-offset:-2px}
 .roster-ph{width:30px;height:42px;flex:none;background:#f4f4f4;overflow:hidden;border:1px solid var(--line-2)}
 .roster-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.roster-ph.logo{width:46px;height:32px;background:#fff}
+.roster-ph.logo img{object-fit:contain;padding:2px}
 .roster-name{font-size:12px;text-transform:uppercase;letter-spacing:.5px}
 .roster-status{font-size:9px;color:var(--ink-3);letter-spacing:.5px}
 .roster-fields{display:none;padding:8px 2px 4px}
@@ -583,7 +585,7 @@ function renderClientRoster(){
   host.innerHTML = STATE.clients.map(function(c){
     return '<div class="roster-row" data-c="' + c.id + '">' +
       '<div class="top">' +
-        '<div class="roster-ph">' + (photoSrc(c.logo_id) ? '<img src="'+esc(photoSrc(c.logo_id))+'">' : '') + '</div>' +
+        '<div class="roster-ph logo">' + (photoSrc(c.logo_id) ? '<img src="'+esc(photoSrc(c.logo_id))+'">' : '') + '</div>' +
         '<div class="roster-name">' + esc(c.name) + '</div>' +
       '</div>' +
       '<div class="roster-fields">' +
