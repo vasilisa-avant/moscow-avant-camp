@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#111;--ink-2:#555;--ink-3:#8a8a8a;--line:#ccc;--line-2:#e8e8e8;--accent:#E93F97;
+ --cat-shoot:#E93F97;--cat-shoot-bg:#FCEAF3;
+ --cat-class:#B8863B;--cat-class-bg:#F4EEE3;
+ --cat-client:#4A6FA5;--cat-client-bg:#E6EBF2;
+ --travel-bg:#FBEAF3;--row-h:26px}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font:300 14px/1.5 Ubuntu,-apple-system,Segoe UI,sans-serif}
+header{border-bottom:1px solid var(--ink);padding:16px 22px;display:flex;align-items:baseline;gap:20px;flex-wrap:wrap}
+.brand{font-size:15px;letter-spacing:2px;text-transform:uppercase}
+.brand span{display:block;font-size:9px;letter-spacing:1.5px;color:var(--ink-3);margin-top:3px}
+.studio{font-size:11px;color:var(--ink-3);letter-spacing:.3px}
+.studio a{color:var(--ink-3)}
+.role{margin-left:auto;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;border:1px solid var(--line);padding:5px 10px}
+.role.agent{border-color:var(--accent);color:var(--accent)}
+.saved{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);opacity:0;transition:opacity .3s}
+.saved.show{opacity:1}
+main{max-width:1600px;margin:0 auto;padding:22px}
+h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;color:var(--ink-2)}
+.layout{display:flex;gap:22px;align-items:flex-start}
+.side{width:300px;flex:none}
+.roster{border:1px solid var(--line-2);max-height:560px;overflow:auto}
+.roster-row{padding:8px 10px;border-bottom:1px solid var(--line-2);cursor:pointer}
+.roster-row .top{display:flex;gap:8px;align-items:center}
+.roster-row:hover{background:#fafafa}
+.roster-row.travel{background:var(--travel-bg)}
+.roster-row.active .top{outline:2px solid var(--accent);outline-offset:-2px}
+.roster-ph{width:30px;height:42px;flex:none;background:#f4f4f4;overflow:hidden;border:1px solid var(--line-2)}
+.roster-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.roster-name{font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.roster-status{font-size:9px;color:var(--ink-3);letter-spacing:.5px}
+.roster-fields{display:none;padding:8px 2px 4px}
+.roster-row.open .roster-fields{display:block}
+.roster-fields input[type=text]{width:100%;border:none;border-bottom:1px solid var(--line);font:300 11px Ubuntu;padding:4px 0;margin:2px 0 8px;background:none}
+.roster-fields textarea{width:100%;border:1px solid var(--line);font:300 11px Ubuntu;padding:6px;margin:2px 0 8px;resize:vertical}
+.roster-fields label{font-size:9px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.5px;display:block}
+.roster-fields select{font:300 11px Ubuntu;border:1px solid var(--line);padding:3px;margin:2px 0 8px;width:100%}
+.roster-fields .chk{display:flex;align-items:center;gap:6px;margin:2px 0 8px;font-size:11px}
+.roster-fields .mini{font-size:9px;color:var(--ink-3);text-transform:uppercase;cursor:pointer;text-decoration:underline}
+.side .btn{width:100%;margin-top:10px}
+.cal-wrap{flex:1;min-width:0;overflow-x:auto}
+.cal{display:grid;grid-template-columns:56px repeat(4,1fr);min-width:780px}
+.cal-corner{border-bottom:1px solid var(--ink)}
+.cal-daylabel{border-bottom:1px solid var(--ink);border-left:1px solid var(--line-2);padding:6px 8px;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.cal-gutter{position:relative;height:calc(var(--row-h)*28)}
+.cal-gutter i{position:absolute;left:0;right:4px;top:0;transform:translateY(-50%);font-style:normal;font-size:9px;color:var(--ink-3);text-align:right}
+.daycol{position:relative;height:calc(var(--row-h)*28);border-left:1px solid var(--line-2);
+  background-image:repeating-linear-gradient(to bottom, var(--line-2), var(--line-2) 1px, transparent 1px, transparent var(--row-h));cursor:copy}
+.daycol .off{position:absolute;left:0;right:0;top:0;background:repeating-linear-gradient(45deg,#fafafa,#fafafa 6px,#f2f2f2 6px,#f2f2f2 12px);pointer-events:none;border-bottom:1px dashed var(--line)}
+.daycol .levwin{position:absolute;left:0;right:0;background:rgba(233,63,151,.05);border-top:1px dashed var(--cat-shoot);border-bottom:1px dashed var(--cat-shoot);pointer-events:none;z-index:0}
+.daycol .levwin span{position:absolute;top:2px;left:4px;font-size:8px;letter-spacing:.5px;text-transform:uppercase;color:var(--cat-shoot);opacity:.75}
+.slot{position:absolute;border-left:3px solid;border-radius:2px;padding:3px 6px;overflow:hidden;font-size:10px;cursor:pointer;box-sizing:border-box}
+.slot.cat-shoot{background:var(--cat-shoot-bg);border-color:var(--cat-shoot)}
+.slot.cat-class{background:var(--cat-class-bg);border-color:var(--cat-class)}
+.slot.cat-client{background:var(--cat-client-bg);border-color:var(--cat-client)}
+.slot .t{font-size:9px;color:var(--ink-3);letter-spacing:.5px}
+.slot .ti{font-size:11px;text-transform:uppercase;letter-spacing:.3px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot .avatars{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap}
+.slot .av{display:flex;flex-direction:column;align-items:center;width:24px}
+.slot .av img,.slot .av .initial{width:20px;height:20px;border-radius:50%;object-fit:cover;background:#eee;font-size:9px;display:flex;align-items:center;justify-content:center}
+.slot .av span{font-size:7px;text-align:center;line-height:1.1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:26px}
+.slot.dim{opacity:.22}
+.slot.mine{outline:2px solid var(--ink);outline-offset:-2px}
+.slot.secondary{box-shadow:0 1px 4px rgba(0,0,0,.18);font-size:9px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);margin:14px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border-left:3px solid}
+.filterbar{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+select,.btn{font:400 11px Ubuntu,sans-serif;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--line);background:#fff;padding:7px 12px;cursor:pointer;color:var(--ink)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.primary:hover{color:#fff;border-color:var(--accent);background:var(--accent)}
+.checklists{display:flex;gap:22px;margin-top:36px;flex-wrap:wrap}
+.checklist{flex:1;min-width:280px;border:1px solid var(--line-2);padding:14px 16px}
+.checklist.wide{flex-basis:100%;width:100%}
+.chk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0 28px}
+.chk-item{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:13px}
+.chk-item input[type=checkbox]{margin-top:2px}
+.chk-item .txt{flex:1}
+.chk-item .txt[contenteditable=true]{outline:none;border-bottom:1px dashed transparent}
+.chk-item .txt[contenteditable=true]:focus{border-bottom-color:var(--accent)}
+.chk-item .del{color:var(--ink-3);cursor:pointer;font-size:14px;line-height:1}
+.chk-add{display:flex;gap:8px;margin-top:10px}
+.chk-add input{flex:1;border:none;border-bottom:1px solid var(--line);font:300 12px Ubuntu;padding:5px 0}
+.readonly-note{font-size:10px;color:var(--ink-3);letter-spacing:.3px;margin-top:8px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal{background:#fff;padding:24px;width:380px;max-width:92vw;max-height:88vh;overflow:auto}
+.modal h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:0 0 14px}
+.modal label{display:block;font-size:9px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.5px;margin-top:10px}
+.modal select,.modal input,.modal textarea{width:100%;border:1px solid var(--line);padding:6px 8px;font:300 13px Ubuntu;margin-top:3px}
+.modal .row{display:flex;gap:10px}
+.modal .row>*{flex:1}
+.modal .pill{display:inline-block;border:1px solid var(--line);padding:3px 8px;margin:3px 4px 0 0;font-size:10px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px}
+.modal .pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.modal .multi{margin-top:4px}
+.modal .actions{display:flex;justify-content:space-between;margin-top:18px}
+.loading{color:var(--ink-3);font-size:12px;letter-spacing:.5px;text-transform:uppercase}
+#toast{position:fixed;bottom:18px;right:18px;background:var(--ink);color:#fff;padding:8px 16px;font-size:11px;letter-spacing:.5px;text-transform:uppercase;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99}
+#toast.show{opacity:1}
+#updateBar{position:sticky;top:0;left:0;right:0;z-index:60;display:none;align-items:center;justify-content:center;gap:14px;
+  background:var(--accent);color:#fff;padding:9px 16px;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
+#updateBar button{background:#fff;color:var(--accent);border:none;padding:5px 12px;font:400 10px Ubuntu,sans-serif;
+  letter-spacing:1px;text-transform:uppercase;cursor:pointer}
+.scrollhint{display:none;font-size:10px;color:var(--ink-3);letter-spacing:.8px;text-transform:uppercase;margin:0 0 8px}
+/* Планшет/телефон: колонки в столбик, крупнее области нажатия, подсказка про скролл календаря. */
+@media (max-width:900px){
+  .layout{flex-direction:column}
+  .side{width:100%}
+  .roster{max-height:320px}
+}
+@media (max-width:640px){
+  main{padding:16px 14px 60px}
+  header{padding:12px 14px;gap:10px}
+  .brand{font-size:13px}
+  .studio{font-size:10px}
+  .role{margin-left:0}
+  .saved{display:none}
+  h2{font-size:11px}
+  .scrollhint{display:block}
+  .cal{min-width:640px}
+  .checklists{gap:16px;margin-top:26px}
+  .checklist{padding:14px}
+  .chk-grid{grid-template-columns:1fr}
+  .chk-item{padding:11px 0}
+  .chk-item input[type=checkbox]{width:18px;height:18px;flex:none}
+  .filterbar select,.filterbar .btn{width:100%}
+  .modal{width:94vw;padding:18px}
+}
+</style></head>
+<body>
+<div id="updateBar">Кто-то обновил данные <button id="updateBarBtn">Обновить</button></div>
+<header id="head"></header>
+<main id="app"><div class="loading">Загрузка…</div></main>
+<div id="modalRoot"></div>
+<div id="toast"></div>
+<script>
+var TOKEN = (new URLSearchParams(location.search)).get('k') || '';
+var EXEC_URL = "https://script.google.com/macros/s/AKfycbyqhXftx2kzemhL14VpCHuGAVpPo4x_47q0kvO1tKBfwSUZGKzpultg8H4vqcCFH4JyWA/exec";
+var STATE = null;
+var FILTER = null;
+var KNOWN_REV = null;
+var POLL_STARTED = false;
+var POLL_MS = 20000;
+
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg || 'Сохранено';
+  t.className = 'show';
+  clearTimeout(toast._h);
+  toast._h = setTimeout(function(){ t.className = ''; }, 1600);
+}
+
+/* Обмен со скриптом идёт обычным fetch() на его же /exec-адрес, а не через
+   google.script.run — эта внутренняя RPC-прослойка Apps Script у некоторых
+   пользователей ломается корпоративными расширениями безопасности в браузере
+   (перехватывают её "protected function" механизм). Обычный сетевой запрос
+   этой проблемы не имеет. Content-Type держим text/plain — иначе браузер
+   перед POST шлёт CORS preflight (OPTIONS), а Apps Script на него не отвечает. */
+function apiCall(action){
+  var args = Array.prototype.slice.call(arguments, 1);
+  return fetch(EXEC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: action, args: args })
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if (res && res.error) { toast(res.error); throw res.error; }
+    return res;
+  });
+}
+function call(fn){
+  var args = Array.prototype.slice.call(arguments, 1);
+  return apiCall.apply(null, [fn].concat(args)).catch(function(err){
+    toast('Ошибка: ' + err);
+    throw err;
+  });
+}
+
+function load(){
+  var done = false;
+  var timeoutId = setTimeout(function(){
+    if (done) return;
+    document.getElementById('app').innerHTML = '<div class="loading">Сервер не ответил за 10 секунд. ' +
+      'Обнови вкладку целиком (F5) — если не поможет, проверь Журнал выполнения в редакторе скрипта.</div>';
+  }, 10000);
+  apiCall('getState', TOKEN).then(function(state){
+    done = true; clearTimeout(timeoutId);
+    if (!state) {
+      document.getElementById('app').innerHTML = '<div class="loading">Сервер отработал, но браузер получил пустой ответ. ' +
+        'Похоже, расширение/антивирус в браузере мешает странице общаться со скриптом.</div>';
+      return;
+    }
+    if (state.error) {
+      document.getElementById('app').innerHTML = '<div class="loading">' + esc(state.error) + '</div>';
+      return;
+    }
+    STATE = state;
+    STATE.images = STATE.images || {};
+    KNOWN_REV = state.rev;
+    hideUpdateBar();
+    // Сперва рисуем ростер/календарь без фото — это быстро (только getState).
+    // Фото подтягиваются отдельным запросом и подставляются вторым проходом,
+    // не задерживая всё остальное на медленных сетях.
+    render();
+    startPolling();
+    var ids = [];
+    STATE.participants.forEach(function(p){ if (p.photo_id) ids.push(p.photo_id); });
+    STATE.clients.forEach(function(c){ if (c.logo_id) ids.push(c.logo_id); });
+    if (ids.length) {
+      apiCall('getImages', ids).then(function(images){
+        STATE.images = images || {};
+        render();
+      }).catch(function(){ /* фото не критичны — молча пропускаем */ });
+    }
+  }).catch(function(err){
+    done = true; clearTimeout(timeoutId);
+    document.getElementById('app').innerHTML = '<div class="loading">Ошибка загрузки: ' + esc(String(err)) + '</div>';
+  });
+}
+
+/* Раз в POLL_MS проверяем лёгкий счётчик изменений — если кто-то сохранил
+   что-то с другой ссылки (или в другой вкладке), покажем баннер с кнопкой
+   «Обновить», а не перезагружаем страницу сами: так не собьём открытую
+   карточку или недописанный текст. */
+function startPolling(){
+  if (POLL_STARTED) return;
+  POLL_STARTED = true;
+  setInterval(function(){
+    apiCall('getRev').then(function(rev){
+      if (rev !== KNOWN_REV) showUpdateBar();
+    }).catch(function(){ /* тихо пропускаем — не критично */ });
+  }, POLL_MS);
+}
+
+function showUpdateBar(){
+  document.getElementById('updateBar').style.display = 'flex';
+}
+function hideUpdateBar(){
+  document.getElementById('updateBar').style.display = 'none';
+}
+document.getElementById('updateBarBtn').onclick = function(){ hideUpdateBar(); load(); };
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function byId(list, id){ for (var i=0;i<list.length;i++) if (list[i].id === id) return list[i]; return null; }
+function photoSrc(fileId){ return (fileId && STATE.images && STATE.images[fileId]) || ''; }
+
+function render(){
+  renderHeader();
+  if (STATE.role === 'agent') renderAgent(); else renderModel();
+}
+
+function renderHeader(){
+  var h = document.getElementById('head');
+  h.innerHTML =
+    '<div class="brand">MOSCOW AVANT CAMP<span>' + STATE.days.map(function(d){return d.label;}).join(' · ') + '</span></div>' +
+    '<div class="studio">' + esc(STATE.studio.name) + ' — ' + esc(STATE.studio.address) +
+      ' · <a href="' + esc(STATE.studio.url) + '" target="_blank">сайт</a></div>' +
+    '<div class="role' + (STATE.role === 'agent' ? ' agent' : '') + '">' +
+      (STATE.role === 'agent' ? 'Агент' : 'Модель · ' + esc(STATE.name)) + '</div>' +
+    '<div class="saved" id="savedInd">Сохранено</div>';
+}
+
+function flashSaved(){
+  var el = document.getElementById('savedInd');
+  if (!el) return;
+  el.className = 'saved show';
+  clearTimeout(flashSaved._h);
+  flashSaved._h = setTimeout(function(){ el.className = 'saved'; }, 1200);
+}
+
+/* ---------- расписание: общая отрисовка ---------- */
+
+function toMin(hhmm){ var p = String(hhmm||'00:00').split(':'); return (+p[0])*60 + (+p[1]); }
+function topPx(hhmm){ return (toMin(hhmm) - toMin(STATE.gridStart)) / 30 * 26; }
+function snapTime(px){
+  var slot = Math.round(px / 26);
+  var mins = toMin(STATE.gridStart) + slot * 30;
+  var hh = Math.floor(mins/60), mm = mins%60;
+  return (hh<10?'0':'')+hh + ':' + (mm<10?'0':'')+mm;
+}
+
+/* Слоты, пересекающиеся по времени, разводим по колонкам (как в обычном
+   календаре), чтобы не наезжали друг на друга — вместо простого списка
+   считаем для каждого слота его колонку и число колонок в его "грозди"
+   пересечений. Слоты без пересечений всегда получают col:0, cols:1, то
+   есть занимают всю ширину дня, как раньше. */
+function layoutDaySlots(daySlots){
+  var events = daySlots.map(function(s){
+    return { s: s, start: toMin(s.start), end: Math.max(toMin(s.end), toMin(s.start) + 1) };
+  }).sort(function(a,b){ return a.start - b.start || a.end - b.end; });
+
+  var clusters = [], active = [], current = null;
+  events.forEach(function(e){
+    active = active.filter(function(a){ return a.end > e.start; });
+    if (!active.length) { current = { events: [] }; clusters.push(current); }
+    var used = active.map(function(a){ return a.col; });
+    var col = 0;
+    while (used.indexOf(col) >= 0) col++;
+    e.col = col;
+    current.events.push(e);
+    active.push(e);
+  });
+  clusters.forEach(function(cl){
+    var maxCol = 0;
+    cl.events.forEach(function(e){ maxCol = Math.max(maxCol, e.col); });
+    cl.events.forEach(function(e){ e.cols = maxCol + 1; });
+  });
+  return events;
+}
+
+function catLabel(s){
+  if (s.category === 'shoot') return (s.subtype || 'Съёмка') + (s.title ? ' — ' + s.title : '');
+  if (s.category === 'class') return s.subtype || 'Мастер-класс';
+  if (s.category === 'client') { var c = byId(STATE.clients, s.client_id); return c ? c.name : 'Клиент'; }
+  return s.title || '';
+}
+
+function slotAvatarsHtml(s){
+  var out = '';
+  if (s.category === 'client') {
+    var c = byId(STATE.clients, s.client_id);
+    if (c) { var cSrc = photoSrc(c.logo_id); out += '<div class="av">' + (cSrc ? '<img src="'+esc(cSrc)+'">' : '<div class="initial">'+esc(c.name[0])+'</div>') + '<span>'+esc(c.name)+'</span></div>'; }
+  }
+  (s.participant_ids||[]).forEach(function(pid){
+    var p = byId(STATE.participants, pid);
+    if (!p) return;
+    var pSrc = photoSrc(p.photo_id);
+    out += '<div class="av">' + (pSrc ? '<img src="'+esc(pSrc)+'">' : '<div class="initial">'+esc(p.name[0])+'</div>') + '<span>'+esc(p.name.split(' ')[0])+'</span></div>';
+  });
+  return out ? '<div class="avatars">'+out+'</div>' : '';
+}
+
+function buildCalendar(editable){
+  var hours = [];
+  for (var m = toMin(STATE.gridStart); m <= toMin(STATE.gridEnd); m += 60) {
+    var hh = Math.floor(m/60);
+    hours.push({ top: (m - toMin(STATE.gridStart))/30*26, label: (hh<10?'0':'')+hh + ':00' });
+  }
+  var gutter = '<div class="cal-gutter">' + hours.map(function(h){
+    return '<i style="top:'+h.top+'px">'+h.label+'</i>';
+  }).join('') + '</div>';
+
+  var head = '<div class="cal-corner"></div>' + STATE.days.map(function(d){
+    return '<div class="cal-daylabel">' + esc(d.label) + '</div>';
+  }).join('');
+
+  var cols = STATE.days.map(function(d){
+    var daySlots = STATE.slots.filter(function(s){ return s.day === d.key; });
+    if (!editable) {
+      // модели не видят клиентов вообще, а слоты фотографа/визажиста/парикмахера/
+      // стилиста — только если её саму в них добавил агент
+      daySlots = daySlots.filter(function(s){
+        if (s.category === 'client') return false;
+        if (s.category === 'shoot') return !!FILTER && (s.participant_ids||[]).indexOf(FILTER) >= 0;
+        return true;
+      });
+    }
+    var off = '';
+    if (d.dayStart && toMin(d.dayStart) > toMin(STATE.gridStart)) {
+      off = '<div class="off" style="height:' + topPx(d.dayStart) + 'px"></div>';
+    }
+    var levTop = Math.max(topPx(STATE.levWindow.start), d.dayStart ? topPx(d.dayStart) : 0);
+    var levBottom = topPx(STATE.levWindow.end);
+    var lev = (editable && levBottom > levTop)
+      ? '<div class="levwin" style="top:' + levTop + 'px;height:' + (levBottom - levTop) + 'px"><span>Лев 10–18</span></div>'
+      : '';
+    // Приоритет по уровням: Лев — всегда на всю ширину дня (весь кэмп
+    // строится вокруг него). Остальная съёмка (второй фотограф/визажист/
+    // парикмахер/стилист) — на всю ширину, если не пересекается со Львом,
+    // иначе узкой полоской поверх. Классы/клиенты — так же, но ещё и с
+    // оглядкой на всю съёмку целиком (Лев + остальные).
+    var isLev = function(s){ return s.category === 'shoot' && s.subtype === STATE.shootSubtypes[0]; };
+    var levSlots = daySlots.filter(isLev);
+    var restShootSlots = daySlots.filter(function(s){ return s.category === 'shoot' && !isLev(s); });
+    var nonShootSlots = daySlots.filter(function(s){ return s.category !== 'shoot'; });
+    var rangeOf = function(s){ return [toMin(s.start), toMin(s.end)]; };
+    var overlapsAny = function(ranges, aStart, aEnd){
+      return ranges.some(function(r){ return aStart < r[1] && r[0] < aEnd; });
+    };
+
+    function renderBlock(s, col, cols, secondary){
+      var top = topPx(s.start), h = Math.max(20, topPx(s.end) - topPx(s.start));
+      var colW = 100 / cols, wPct = colW, lPct = col * colW;
+      if (secondary) { wPct = colW * 0.55; lPct = col * colW + (colW - wPct); }
+      var cls = 'slot cat-' + s.category + (secondary ? ' secondary' : '');
+      if (FILTER) {
+        var mine = (s.participant_ids||[]).indexOf(FILTER) >= 0;
+        cls += mine ? ' mine' : ' dim';
+      }
+      var style = 'top:' + top + 'px;height:' + h + 'px;' +
+        'left:calc(' + lPct + '% + 3px);width:calc(' + wPct + '% - 6px)';
+      return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '">' +
+        '<div class="t">' + s.start + '–' + s.end + '</div>' +
+        '<div class="ti">' + esc(catLabel(s)) + (s.shoot_kind ? ' · ' + esc(s.shoot_kind) : '') + '</div>' +
+        slotAvatarsHtml(s) +
+        '</div>';
+    }
+
+    var levRanges = levSlots.map(rangeOf);
+    var shootRanges = levRanges.concat(restShootSlots.map(rangeOf));
+
+    var blocks =
+      layoutDaySlots(levSlots).map(function(e){ return renderBlock(e.s, e.col, e.cols, false); }).join('') +
+      layoutDaySlots(restShootSlots).map(function(e){
+        return renderBlock(e.s, e.col, e.cols, overlapsAny(levRanges, e.start, e.end));
+      }).join('') +
+      layoutDaySlots(nonShootSlots).map(function(e){
+        return renderBlock(e.s, e.col, e.cols, overlapsAny(shootRanges, e.start, e.end));
+      }).join('');
+    var clickable = editable ? ' data-day="' + d.key + '"' : '';
+    return '<div class="daycol"' + clickable + '>' + lev + off + blocks + '</div>';
+  }).join('');
+
+  var legend = editable
+    ? '<span><i style="border-color:var(--cat-shoot)"></i>Съёмка / визажист / парикмахер / стилист</span>' +
+      '<span><i style="border-color:var(--cat-class)"></i>Мастер-классы</span>' +
+      '<span><i style="border-color:var(--cat-client)"></i>Клиенты</span>'
+    : '<span><i style="border-color:var(--cat-shoot)"></i>Съёмка / визажист / парикмахер / стилист — видно, только если вы в неё добавлены</span>' +
+      '<span><i style="border-color:var(--cat-class)"></i>Мастер-классы</span>';
+  return '<div class="cal">' + head + gutter + cols + '</div>' +
+    '<div class="legend">' + legend + '</div>';
+}
+
+/* ---------- вид агента ---------- */
+
+function renderAgent(){
+  var app = document.getElementById('app');
+  app.innerHTML =
+    '<div class="layout">' +
+      '<div class="side">' +
+        '<h2>Участницы</h2>' +
+        '<div class="roster" id="roster"></div>' +
+        '<button class="btn" id="addParticipant">+ Добавить участницу</button>' +
+        '<h2 style="margin-top:26px">Клиенты</h2>' +
+        '<div class="roster" id="clientRoster"></div>' +
+        '<button class="btn" id="addClient">+ Добавить клиента</button>' +
+      '</div>' +
+      '<div class="cal-wrap">' +
+        '<div class="filterbar">' +
+          '<button class="btn primary" id="addSlot">+ Добавить в календарь</button>' +
+          (FILTER ? '<button class="btn" id="clearFilter">✕ Сбросить фильтр (' + esc((byId(STATE.participants, FILTER)||{}).name||'') + ')</button>' : '') +
+        '</div>' +
+        '<div class="scrollhint">Листай календарь в сторону →</div>' +
+        '<div id="calHost"></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="checklists">' +
+      '<div class="checklist" id="chkModelHost"><h2>Чек-лист моделей</h2></div>' +
+      '<div class="checklist" id="chkAgentHost"><h2>Оргзадачи агента</h2></div>' +
+    '</div>';
+
+  renderRoster();
+  renderClientRoster();
+  document.getElementById('calHost').innerHTML = buildCalendar(true);
+  renderChecklist('chkModelHost', 'model', STATE.checklistModel, true);
+  renderChecklist('chkAgentHost', 'agent', STATE.checklistAgent, true);
+
+  document.getElementById('addParticipant').onclick = function(){
+    var name = prompt('Имя участницы:');
+    if (!name) return;
+    call('addParticipant', TOKEN, name, 'обязательно').then(function(){ toast('Добавлено'); load(); });
+  };
+  document.getElementById('addClient').onclick = function(){
+    var name = prompt('Название клиента:');
+    if (!name) return;
+    call('addClient', TOKEN, name).then(function(){ toast('Добавлено'); load(); });
+  };
+  document.getElementById('addSlot').onclick = function(){ openSlotModal(null, null, null); };
+  var cf = document.getElementById('clearFilter');
+  if (cf) cf.onclick = function(){ FILTER = null; renderAgent(); };
+}
+
+function renderRoster(){
+  var host = document.getElementById('roster');
+  host.innerHTML = STATE.participants.map(function(p){
+    var cls = 'roster-row' + (p.travel ? ' travel' : '') + (FILTER === p.id ? ' active' : '');
+    return '<div class="' + cls + '" data-p="' + p.id + '">' +
+      '<div class="top">' +
+        '<div class="roster-ph">' + (photoSrc(p.photo_id) ? '<img src="'+esc(photoSrc(p.photo_id))+'">' : '') + '</div>' +
+        '<div title="' + esc([
+              p.home_address ? 'Адрес: ' + p.home_address : '',
+              p.availability ? 'Доступность: ' + p.availability : ''
+            ].filter(Boolean).join('\n\n') || 'нет данных') + '">' +
+          '<div class="roster-name">' + esc(p.name) + '</div>' +
+          '<div class="roster-status">' + esc(p.status) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="roster-fields">' +
+        '<label>Доступность по дням</label>' +
+        '<textarea rows="3" placeholder="06.09 — ... 07.09 — ..." data-field="availability" data-id="' + p.id + '">' + esc(p.availability) + '</textarea>' +
+        '<label>Домашний адрес (для наведения)</label>' +
+        '<input type="text" value="' + esc(p.home_address) + '" data-field="home_address" data-id="' + p.id + '">' +
+        '<label>Где разместят в Москве</label>' +
+        '<input type="text" value="' + esc(p.moscow_address) + '" data-field="moscow_address" data-id="' + p.id + '">' +
+        '<label>Кто встречает</label>' +
+        '<input type="text" placeholder="имя, если встречают" value="' + esc(p.met_by) + '" data-field="met_by" data-id="' + p.id + '">' +
+        '<div class="chk"><input type="checkbox" ' + (p.travel?'checked':'') + ' data-field="travel" data-id="' + p.id + '"> <label style="margin:0">Приезжая</label></div>' +
+        '<label>Статус участия</label>' +
+        '<select data-field="status" data-id="' + p.id + '">' +
+          '<option' + (p.status==='обязательно'?' selected':'') + '>обязательно</option>' +
+          '<option' + (p.status==='опционально'?' selected':'') + '>опционально</option>' +
+        '</select>' +
+        '<label>Фото</label>' +
+        '<input type="file" accept="image/*" data-photo="' + p.id + '">' +
+        '<div class="mini" data-del-p="' + p.id + '" style="margin-top:8px">Удалить участницу</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  Array.prototype.forEach.call(host.querySelectorAll('.roster-row .top'), function(el){
+    el.onclick = function(ev){
+      ev.stopPropagation();
+      var row = el.parentElement;
+      var pid = row.getAttribute('data-p');
+      if (FILTER === pid) { FILTER = null; } else { FILTER = pid; }
+      renderAgent();
+    };
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-field]'), function(el){
+    el.addEventListener('click', function(ev){ ev.stopPropagation(); });
+    el.addEventListener('change', function(){
+      var id = el.getAttribute('data-id'), field = el.getAttribute('data-field');
+      var val = el.type === 'checkbox' ? el.checked : el.value;
+      call('saveParticipantField', TOKEN, id, field, val).then(function(){
+        flashSaved();
+        var p = byId(STATE.participants, id); if (p) p[field] = val;
+        if (field === 'travel') renderRoster();
+      });
+    });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-photo]'), function(el){
+    el.addEventListener('click', function(ev){ ev.stopPropagation(); });
+    el.addEventListener('change', function(){
+      var id = el.getAttribute('data-photo');
+      var file = el.files[0]; if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        var base64 = reader.result.split(',')[1];
+        call('uploadParticipantPhoto', TOKEN, id, base64, file.type).then(function(res){
+          toast('Фото сохранено'); load();
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-del-p]'), function(el){
+    el.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      var id = el.getAttribute('data-del-p');
+      if (!confirm('Удалить участницу из списка?')) return;
+      call('deleteParticipant', TOKEN, id).then(function(){ toast('Удалено'); load(); });
+    });
+  });
+  // раскрытие полей по клику на строку (кроме кликов внутри полей)
+  Array.prototype.forEach.call(host.querySelectorAll('.roster-row'), function(row){
+    row.addEventListener('click', function(ev){
+      if (ev.target.closest('.top')) return;
+      row.classList.toggle('open');
+    });
+  });
+}
+
+function renderClientRoster(){
+  var host = document.getElementById('clientRoster');
+  host.innerHTML = STATE.clients.map(function(c){
+    return '<div class="roster-row" data-c="' + c.id + '">' +
+      '<div class="top">' +
+        '<div class="roster-ph">' + (photoSrc(c.logo_id) ? '<img src="'+esc(photoSrc(c.logo_id))+'">' : '') + '</div>' +
+        '<div class="roster-name">' + esc(c.name) + '</div>' +
+      '</div>' +
+      '<div class="roster-fields">' +
+        '<label>Лого</label>' +
+        '<input type="file" accept="image/*" data-logo="' + c.id + '">' +
+        '<div class="mini" data-del-c="' + c.id + '" style="margin-top:8px">Удалить клиента</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  Array.prototype.forEach.call(host.querySelectorAll('.roster-row'), function(row){
+    row.addEventListener('click', function(ev){
+      if (ev.target.closest('input')) return;
+      row.classList.toggle('open');
+    });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-logo]'), function(el){
+    el.addEventListener('click', function(ev){ ev.stopPropagation(); });
+    el.addEventListener('change', function(){
+      var id = el.getAttribute('data-logo');
+      var file = el.files[0]; if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        var base64 = reader.result.split(',')[1];
+        call('uploadClientLogo', TOKEN, id, base64, file.type).then(function(){ toast('Лого сохранено'); load(); });
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-del-c]'), function(el){
+    el.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      var id = el.getAttribute('data-del-c');
+      if (!confirm('Удалить клиента?')) return;
+      call('deleteClient', TOKEN, id).then(function(){ toast('Удалено'); load(); });
+    });
+  });
+}
+
+/* ---------- вид модели ---------- */
+
+function renderModel(){
+  var app = document.getElementById('app');
+  app.innerHTML =
+    '<div class="filterbar">' +
+      '<select id="whoAmI"><option value="">— выбрать себя —</option>' +
+        STATE.participants.map(function(p){ return '<option value="'+p.id+'"'+(FILTER===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('') +
+      '</select>' +
+    '</div>' +
+    '<div class="scrollhint">Листай календарь в сторону →</div>' +
+    '<div id="calHost"></div>' +
+    '<div class="checklists">' +
+      '<div class="checklist wide" id="chkModelHost"><h2>Что подготовить</h2></div>' +
+    '</div>';
+  document.getElementById('calHost').innerHTML = buildCalendar(false);
+  renderChecklist('chkModelHost', 'model', STATE.checklistModel, false);
+  document.getElementById('whoAmI').onchange = function(){ FILTER = this.value || null; renderModel(); };
+}
+
+/* ---------- чек-листы ---------- */
+
+function renderChecklist(hostId, listName, items, editable){
+  var host = document.getElementById(hostId);
+  var body = items.map(function(it){
+    return '<div class="chk-item">' +
+      '<input type="checkbox" ' + (it.checked?'checked':'') + (editable?'':' disabled') + ' data-chk="' + it.id + '" data-list="' + listName + '">' +
+      '<div class="txt"' + (editable ? ' contenteditable="true"' : '') + ' data-edit="' + it.id + '" data-list="' + listName + '">' + esc(it.text) + '</div>' +
+      (editable ? '<div class="del" data-delchk="' + it.id + '" data-list="' + listName + '">✕</div>' : '') +
+    '</div>';
+  }).join('');
+  host.innerHTML = '<h2>' + host.querySelector('h2').textContent + '</h2>' + '<div class="chk-grid">' + body + '</div>' +
+    (editable ? '<div class="chk-add"><input type="text" placeholder="добавить пункт…" data-addchk="' + listName + '"><button class="btn" data-addchkbtn="' + listName + '">+</button></div>' : '');
+
+  Array.prototype.forEach.call(host.querySelectorAll('[data-chk]'), function(el){
+    el.addEventListener('change', function(){
+      call('toggleChecklistItem', TOKEN, el.getAttribute('data-list'), el.getAttribute('data-chk'), el.checked).then(flashSaved);
+    });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-edit]'), function(el){
+    el.addEventListener('blur', function(){
+      call('editChecklistItem', TOKEN, el.getAttribute('data-list'), el.getAttribute('data-edit'), el.textContent).then(flashSaved);
+    });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-delchk]'), function(el){
+    el.addEventListener('click', function(){
+      call('deleteChecklistItem', TOKEN, el.getAttribute('data-list'), el.getAttribute('data-delchk')).then(function(){ toast('Удалено'); load(); });
+    });
+  });
+  var addBtn = host.querySelector('[data-addchkbtn]');
+  if (addBtn) addBtn.addEventListener('click', function(){
+    var inp = host.querySelector('[data-addchk]');
+    if (!inp.value.trim()) return;
+    call('addChecklistItem', TOKEN, listName, inp.value.trim()).then(function(){ toast('Добавлено'); load(); });
+  });
+}
+
+/* ---------- модалка слота ---------- */
+
+function openSlotModal(day, startY, existing){
+  var s = existing || { id: null, day: day || STATE.days[0].key, start: startY ? snapTime(startY) : '10:00',
+    end: '11:00', category: 'shoot', subtype: STATE.shootSubtypes[0], title: '',
+    participant_ids: [], client_id: '', shoot_kind: '', notes: '' };
+
+  var root = document.getElementById('modalRoot');
+  root.innerHTML = '<div class="modal-bg"><div class="modal"><h3>' + (existing ? 'Слот в календаре' : 'Новый слот') + '</h3>' +
+    '<div>' + ['shoot','class','client'].map(function(c){
+      var lbl = c === 'shoot' ? 'Съёмка' : c === 'class' ? 'Класс' : 'Клиент';
+      return '<span class="pill' + (s.category===c?' on':'') + '" data-cat="' + c + '">' + lbl + '</span>';
+    }).join('') + '</div>' +
+    '<label>День</label><select id="mDay">' + STATE.days.map(function(d){
+      return '<option value="'+d.key+'"'+(s.day===d.key?' selected':'')+'>'+esc(d.label)+'</option>';
+    }).join('') + '</select>' +
+    '<div class="row"><div><label>Начало</label><input id="mStart" type="time" value="' + s.start + '"></div>' +
+      '<div><label>Конец</label><input id="mEnd" type="time" value="' + s.end + '"></div></div>' +
+    '<div id="mFields"></div>' +
+    '<label>Заметка</label><textarea id="mNotes" rows="2">' + esc(s.notes) + '</textarea>' +
+    '<div class="actions">' +
+      (existing ? '<span class="mini" id="mDelete" style="color:var(--ink-3);cursor:pointer;font-size:11px;text-transform:uppercase">Удалить</span>' : '<span></span>') +
+      '<span><button class="btn" id="mCancel">Отмена</button> <button class="btn primary" id="mSave">Сохранить</button></span>' +
+    '</div>' +
+  '</div></div>';
+
+  function renderFields(){
+    var f = document.getElementById('mFields');
+    if (s.category === 'shoot') {
+      f.innerHTML =
+        '<label>Кто снимает / готовит</label><select id="mSubtype">' + STATE.shootSubtypes.map(function(x){
+          return '<option' + (s.subtype===x?' selected':'') + '>' + esc(x) + '</option>';
+        }).join('') + '</select>' +
+        '<label>Имя специалиста (необязательно, будет видно в календаре)</label>' +
+        '<input id="mTitle" type="text" placeholder="например, имя визажиста" value="' + esc(s.title) + '">' +
+        '<label>Вид съёмки (если фотограф)</label><select id="mShootKind"><option value="">—</option>' + STATE.shootKinds.map(function(x){
+          return '<option' + (s.shoot_kind===x?' selected':'') + '>' + esc(x) + '</option>';
+        }).join('') + '</select>' +
+        '<label>Модель (фото обязательно для слота фотографа)</label>' +
+        '<div class="multi">' + participantPicker(s.participant_ids, true) + '</div>';
+    } else if (s.category === 'class') {
+      f.innerHTML =
+        '<label>Тип класса</label><select id="mSubtype">' + STATE.classTypes.map(function(x){
+          return '<option' + (s.subtype===x?' selected':'') + '>' + esc(x) + '</option>';
+        }).join('') + '</select>' +
+        '<label>Участницы</label><div class="multi">' + participantPicker(s.participant_ids, false) + '</div>';
+    } else {
+      f.innerHTML =
+        '<label>Клиент</label><select id="mClient">' + STATE.clients.map(function(c){
+          return '<option value="'+c.id+'"' + (s.client_id===c.id?' selected':'') + '>' + esc(c.name) + '</option>';
+        }).join('') + '</select>' +
+        '<label>Модели у клиента (если нужно)</label><div class="multi">' + participantPicker(s.participant_ids, false) + '</div>';
+    }
+    bindPicker();
+  }
+
+  function participantPicker(selected, single){
+    return STATE.participants.map(function(p){
+      var on = selected.indexOf(p.id) >= 0;
+      return '<span class="pill' + (on?' on':'') + '" data-pp="' + p.id + '" data-single="' + (single?'1':'0') + '">' + esc(p.name) + '</span>';
+    }).join('');
+  }
+  function bindPicker(){
+    Array.prototype.forEach.call(root.querySelectorAll('[data-pp]'), function(el){
+      el.onclick = function(){
+        var id = el.getAttribute('data-pp'), single = el.getAttribute('data-single') === '1';
+        if (single) { s.participant_ids = el.classList.contains('on') ? [] : [id]; }
+        else {
+          var i = s.participant_ids.indexOf(id);
+          if (i >= 0) s.participant_ids.splice(i,1); else s.participant_ids.push(id);
+        }
+        renderFields();
+      };
+    });
+  }
+
+  renderFields();
+
+  Array.prototype.forEach.call(root.querySelectorAll('[data-cat]'), function(el){
+    el.onclick = function(){
+      s.category = el.getAttribute('data-cat');
+      s.subtype = s.category === 'shoot' ? STATE.shootSubtypes[0] : s.category === 'class' ? STATE.classTypes[0] : '';
+      Array.prototype.forEach.call(root.querySelectorAll('[data-cat]'), function(x){ x.classList.toggle('on', x===el); });
+      renderFields();
+    };
+  });
+
+  document.getElementById('mCancel').onclick = function(){ root.innerHTML = ''; };
+  root.querySelector('.modal-bg').addEventListener('click', function(ev){ if (ev.target === this) root.innerHTML = ''; });
+
+  if (existing) document.getElementById('mDelete').onclick = function(){
+    if (!confirm('Удалить слот?')) return;
+    call('deleteSlot', TOKEN, s.id).then(function(){ root.innerHTML = ''; toast('Удалено'); load(); });
+  };
+
+  document.getElementById('mSave').onclick = function(){
+    s.day = document.getElementById('mDay').value;
+    s.start = document.getElementById('mStart').value;
+    s.end = document.getElementById('mEnd').value;
+    s.notes = document.getElementById('mNotes').value;
+    var subEl = document.getElementById('mSubtype'); if (subEl) s.subtype = subEl.value;
+    var titleEl = document.getElementById('mTitle'); if (titleEl) s.title = titleEl.value;
+    var kindEl = document.getElementById('mShootKind'); if (kindEl) s.shoot_kind = kindEl.value;
+    var cliEl = document.getElementById('mClient'); if (cliEl) s.client_id = cliEl.value;
+    if (s.category === 'shoot' && s.subtype.indexOf('Фотограф') === 0 && !s.participant_ids.length) {
+      toast('Для слота фотографа нужна модель'); return;
+    }
+    call('upsertSlot', TOKEN, s).then(function(){ root.innerHTML = ''; toast('Сохранено'); load(); });
+  };
+}
+
+/* ---------- делегирование кликов по календарю ---------- */
+
+document.addEventListener('click', function(ev){
+  var slotEl = ev.target.closest('.slot');
+  if (slotEl) {
+    if (STATE.role !== 'agent') return;
+    var s = byId(STATE.slots, slotEl.getAttribute('data-slot'));
+    if (s) openSlotModal(null, null, s);
+    return;
+  }
+  var col = ev.target.closest('.daycol[data-day]');
+  if (col) {
+    var rect = col.getBoundingClientRect();
+    var y = ev.clientY - rect.top;
+    openSlotModal(col.getAttribute('data-day'), y, null);
+  }
+});
+
+load();
+</script>
+</body></html>
