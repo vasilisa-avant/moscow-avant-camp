@@ -64,13 +64,17 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .slot.cat-client{background:var(--cat-client-bg);border-color:var(--cat-client)}
 .slot .t{font-size:9px;color:var(--ink-3);letter-spacing:.5px}
 .slot .ti{font-size:11px;text-transform:uppercase;letter-spacing:.3px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slot .avatars{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap}
-.slot .av{display:flex;flex-direction:column;align-items:center;width:24px}
-.slot .av img,.slot .av .initial{width:20px;height:20px;border-radius:50%;object-fit:cover;background:#eee;font-size:9px;display:flex;align-items:center;justify-content:center}
-.slot .av span{font-size:7px;text-align:center;line-height:1.1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:26px}
+.slot .avatars{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.slot .av{display:flex;flex-direction:column;align-items:center;width:34px}
+.slot .av img,.slot .av .initial{width:28px;height:28px;border-radius:50%;object-fit:cover;background:#eee;font-size:11px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.08)}
+.slot .av span{font-size:8px;text-align:center;line-height:1.1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:36px}
 .slot.dim{opacity:.22}
 .slot.mine{outline:2px solid var(--ink);outline-offset:-2px}
 .slot.secondary{box-shadow:0 1px 4px rgba(0,0,0,.18);font-size:9px}
+.slot.secondary .ti{font-size:8px;text-transform:none;letter-spacing:0;white-space:normal;overflow:hidden;text-overflow:clip;word-break:normal;overflow-wrap:break-word;line-height:1.2}
+.slot.secondary .av{width:22px}
+.slot.secondary .av img,.slot.secondary .av .initial{width:18px;height:18px;font-size:8px}
+.slot.secondary .av span{max-width:24px;font-size:7px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);margin:14px 0 0}
 .legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border-left:3px solid}
 .filterbar{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
@@ -346,6 +350,13 @@ function catLabel(s){
   return s.title || '';
 }
 
+// короткая подпись для узкой (вторичной) полосы — там нет места на полное
+// "Визажист — Имя", важнее имя специалиста/клиента, чем категория
+function catLabelShort(s){
+  if (s.category === 'shoot') return s.title || s.subtype || 'Съёмка';
+  return catLabel(s);
+}
+
 function slotAvatarsHtml(s){
   var out = '';
   if (s.category === 'client') {
@@ -410,7 +421,7 @@ function buildCalendar(editable){
         // Все второстепенные слоты (пересекающиеся со Львом) вместе делят ОДНУ
         // общую узкую полосу с правого края дня, а не сжимаются каждый
         // относительно своей же колонки — иначе получается россыпь с разрывами.
-        var zone = 32;
+        var zone = 36;
         wPct = zone / cols;
         lPct = (100 - zone) + col * wPct;
       }
@@ -421,9 +432,11 @@ function buildCalendar(editable){
       }
       var style = 'top:' + top + 'px;height:' + h + 'px;' +
         'left:calc(' + lPct + '% + 3px);width:calc(' + wPct + '% - 6px)';
-      return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '">' +
+      var fullLabel = catLabel(s) + (s.shoot_kind ? ' · ' + s.shoot_kind : '');
+      var shownLabel = secondary ? catLabelShort(s) : fullLabel;
+      return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '" title="' + esc(s.start + '–' + s.end + ' ' + fullLabel) + '">' +
         '<div class="t">' + s.start + '–' + s.end + '</div>' +
-        '<div class="ti">' + esc(catLabel(s)) + (s.shoot_kind ? ' · ' + esc(s.shoot_kind) : '') + '</div>' +
+        '<div class="ti">' + esc(shownLabel) + '</div>' +
         slotAvatarsHtml(s) +
         '</div>';
     }
@@ -610,8 +623,12 @@ function showHoverPop(pid, anchorEl){
   root.innerHTML = '<div class="hoverpop" style="top:' + Math.max(8, top) + 'px;left:' + Math.max(8, left) + 'px">' +
     '<div class="hp-name">' + esc(p.name) + '</div>' +
     '<div class="hp-chk"><input type="checkbox" id="hpTravel" ' + (p.travel?'checked':'') + '> <label style="margin:0">Приезжая</label></div>' +
-    '<label>Где живёт / разместят</label>' +
-    '<input type="text" id="hpAddress" value="' + esc(p.moscow_address) + '">' +
+    '<div id="hpTravelFields" style="display:' + (p.travel?'block':'none') + '">' +
+      '<label>Где живёт / разместят</label>' +
+      '<input type="text" id="hpAddress" value="' + esc(p.moscow_address) + '">' +
+      '<label>Кто встречает</label>' +
+      '<input type="text" id="hpMetBy" value="' + esc(p.met_by) + '">' +
+    '</div>' +
     '<label>Статус</label>' +
     '<select id="hpStatus">' +
       '<option' + (p.status==='обязательно'?' selected':'') + '>обязательно</option>' +
@@ -622,16 +639,21 @@ function showHoverPop(pid, anchorEl){
   var pop = root.firstChild;
   pop.addEventListener('mouseenter', function(){ clearTimeout(HOVER_HIDE_T); });
   pop.addEventListener('mouseleave', scheduleHideHoverPop);
+  document.getElementById('hpTravel').onchange = function(){
+    document.getElementById('hpTravelFields').style.display = this.checked ? 'block' : 'none';
+  };
   document.getElementById('hpSave').onclick = function(){
     var travel = document.getElementById('hpTravel').checked;
     var address = document.getElementById('hpAddress').value;
+    var metBy = document.getElementById('hpMetBy').value;
     var status = document.getElementById('hpStatus').value;
     Promise.all([
       call('saveParticipantField', TOKEN, pid, 'travel', travel),
       call('saveParticipantField', TOKEN, pid, 'moscow_address', address),
+      call('saveParticipantField', TOKEN, pid, 'met_by', metBy),
       call('saveParticipantField', TOKEN, pid, 'status', status)
     ]).then(function(){
-      p.travel = travel; p.moscow_address = address; p.status = status;
+      p.travel = travel; p.moscow_address = address; p.met_by = metBy; p.status = status;
       flashSaved(); hideHoverPop(); renderRoster();
     });
   };
