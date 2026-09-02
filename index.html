@@ -50,7 +50,8 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .daycol{position:relative;height:calc(var(--row-h)*28);border-left:1px solid var(--line-2);
   background-image:repeating-linear-gradient(to bottom, var(--line-2), var(--line-2) 1px, transparent 1px, transparent var(--row-h));cursor:copy}
 .daycol .off{position:absolute;left:0;right:0;top:0;background:repeating-linear-gradient(45deg,#fafafa,#fafafa 6px,#f2f2f2 6px,#f2f2f2 12px);pointer-events:none;border-bottom:1px dashed var(--line)}
-.daycol .levwin{position:absolute;left:0;right:0;background:rgba(233,63,151,.05);border-top:1px dashed var(--cat-shoot);border-bottom:1px dashed var(--cat-shoot);pointer-events:none;z-index:0}
+.daycol .levwin{position:absolute;left:0;right:0;background:rgba(233,63,151,.05);border-top:1px dashed var(--cat-shoot);border-bottom:1px dashed var(--cat-shoot);pointer-events:none;z-index:5}
+.daycol .levwin span{background:#fff;padding:0 3px}
 .daycol .levwin span{position:absolute;top:2px;left:4px;font-size:8px;letter-spacing:.5px;text-transform:uppercase;color:var(--cat-shoot);opacity:.75}
 .slot{position:absolute;border-left:3px solid;border-radius:2px;padding:3px 6px;overflow:hidden;font-size:10px;cursor:pointer;box-sizing:border-box}
 .slot.cat-shoot{background:var(--cat-shoot-bg);border-color:var(--cat-shoot)}
@@ -220,15 +221,26 @@ function load(){
 }
 
 /* Раз в POLL_MS проверяем лёгкий счётчик изменений — если кто-то сохранил
-   что-то с другой ссылки (или в другой вкладке), покажем баннер с кнопкой
-   «Обновить», а не перезагружаем страницу сами: так не собьём открытую
-   карточку или недописанный текст. */
+   что-то с другой ссылки (или в другой вкладке), страница обновляется сама.
+   Придерживаем автообновление, только если прямо сейчас открыто модальное
+   окно слота или что-то активно набирается (фокус в поле ввода) — чтобы не
+   стереть недописанное; в этом случае просто попробуем на следующем цикле. */
+function busyEditing(){
+  if (document.getElementById('modalRoot').children.length) return true;
+  var el = document.activeElement;
+  return !!(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable));
+}
+
 function startPolling(){
   if (POLL_STARTED) return;
   POLL_STARTED = true;
   setInterval(function(){
     apiCall('getRev').then(function(rev){
-      if (rev !== KNOWN_REV) showUpdateBar();
+      if (rev === KNOWN_REV) return;
+      if (busyEditing()) { showUpdateBar(); return; }
+      hideUpdateBar();
+      toast('Кто-то обновил данные на другом устройстве — подтягиваю');
+      load();
     }).catch(function(){ /* тихо пропускаем — не критично */ });
   }, POLL_MS);
 }
