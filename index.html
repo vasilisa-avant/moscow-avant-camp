@@ -406,7 +406,14 @@ function buildCalendar(editable){
     function renderBlock(s, col, cols, secondary){
       var top = topPx(s.start), h = Math.max(20, topPx(s.end) - topPx(s.start));
       var colW = 100 / cols, wPct = colW, lPct = col * colW;
-      if (secondary) { wPct = colW * 0.55; lPct = col * colW + (colW - wPct); }
+      if (secondary) {
+        // Все второстепенные слоты (пересекающиеся со Львом) вместе делят ОДНУ
+        // общую узкую полосу с правого края дня, а не сжимаются каждый
+        // относительно своей же колонки — иначе получается россыпь с разрывами.
+        var zone = 32;
+        wPct = zone / cols;
+        lPct = (100 - zone) + col * wPct;
+      }
       var cls = 'slot cat-' + s.category + (isLev(s) ? ' lev' : '') + (secondary ? ' secondary' : '');
       if (FILTER) {
         var mine = (s.participant_ids||[]).indexOf(FILTER) >= 0;
@@ -504,7 +511,7 @@ function renderRoster(){
       '<div class="top">' +
         '<div class="roster-ph">' + (photoSrc(p.photo_id) ? '<img src="'+esc(photoSrc(p.photo_id))+'">' : '') + '</div>' +
         '<div title="' + esc([
-              p.home_address ? 'Адрес: ' + p.home_address : '',
+              (p.travel && p.moscow_address) ? 'Где размещена: ' + p.moscow_address : '',
               p.availability ? 'Доступность: ' + p.availability : ''
             ].filter(Boolean).join('\n\n') || 'нет данных') + '">' +
           '<div class="roster-name">' + esc(p.name) + '</div>' +
@@ -515,9 +522,7 @@ function renderRoster(){
       '<div class="roster-fields">' +
         '<label>Доступность по дням</label>' +
         '<textarea rows="3" placeholder="06.09 — ... 07.09 — ..." data-field="availability" data-id="' + p.id + '">' + esc(p.availability) + '</textarea>' +
-        '<label>Домашний адрес (для наведения)</label>' +
-        '<input type="text" value="' + esc(p.home_address) + '" data-field="home_address" data-id="' + p.id + '">' +
-        '<label>Где разместят в Москве</label>' +
+        '<label>Где разместят в Москве (видно при наведении, если приезжая)</label>' +
         '<input type="text" value="' + esc(p.moscow_address) + '" data-field="moscow_address" data-id="' + p.id + '">' +
         '<label>Кто встречает</label>' +
         '<input type="text" placeholder="имя, если встречают" value="' + esc(p.met_by) + '" data-field="met_by" data-id="' + p.id + '">' +
@@ -527,8 +532,6 @@ function renderRoster(){
           '<option' + (p.status==='обязательно'?' selected':'') + '>обязательно</option>' +
           '<option' + (p.status==='опционально'?' selected':'') + '>опционально</option>' +
         '</select>' +
-        '<label>Фото</label>' +
-        '<input type="file" accept="image/*" data-photo="' + p.id + '">' +
         '<div class="mini" data-del-p="' + p.id + '" style="margin-top:8px">Удалить участницу</div>' +
       '</div>' +
     '</div>';
@@ -560,21 +563,6 @@ function renderRoster(){
         var p = byId(STATE.participants, id); if (p) p[field] = val;
         if (field === 'travel') renderRoster();
       });
-    });
-  });
-  Array.prototype.forEach.call(host.querySelectorAll('[data-photo]'), function(el){
-    el.addEventListener('click', function(ev){ ev.stopPropagation(); });
-    el.addEventListener('change', function(){
-      var id = el.getAttribute('data-photo');
-      var file = el.files[0]; if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function(){
-        var base64 = reader.result.split(',')[1];
-        call('uploadParticipantPhoto', TOKEN, id, base64, file.type).then(function(res){
-          toast('Фото сохранено'); load();
-        });
-      };
-      reader.readAsDataURL(file);
     });
   });
   Array.prototype.forEach.call(host.querySelectorAll('[data-del-p]'), function(el){
@@ -623,7 +611,7 @@ function showHoverPop(pid, anchorEl){
     '<div class="hp-name">' + esc(p.name) + '</div>' +
     '<div class="hp-chk"><input type="checkbox" id="hpTravel" ' + (p.travel?'checked':'') + '> <label style="margin:0">Приезжая</label></div>' +
     '<label>Где живёт / разместят</label>' +
-    '<input type="text" id="hpAddress" value="' + esc(p.moscow_address || p.home_address) + '">' +
+    '<input type="text" id="hpAddress" value="' + esc(p.moscow_address) + '">' +
     '<label>Статус</label>' +
     '<select id="hpStatus">' +
       '<option' + (p.status==='обязательно'?' selected':'') + '>обязательно</option>' +
@@ -661,8 +649,6 @@ function renderClientRoster(){
         '<div class="roster-name">' + esc(c.name) + '</div>' +
       '</div>' +
       '<div class="roster-fields">' +
-        '<label>Лого</label>' +
-        '<input type="file" accept="image/*" data-logo="' + c.id + '">' +
         '<div class="mini" data-del-c="' + c.id + '" style="margin-top:8px">Удалить клиента</div>' +
       '</div>' +
     '</div>';
@@ -671,19 +657,6 @@ function renderClientRoster(){
     row.addEventListener('click', function(ev){
       if (ev.target.closest('input')) return;
       row.classList.toggle('open');
-    });
-  });
-  Array.prototype.forEach.call(host.querySelectorAll('[data-logo]'), function(el){
-    el.addEventListener('click', function(ev){ ev.stopPropagation(); });
-    el.addEventListener('change', function(){
-      var id = el.getAttribute('data-logo');
-      var file = el.files[0]; if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function(){
-        var base64 = reader.result.split(',')[1];
-        call('uploadClientLogo', TOKEN, id, base64, file.type).then(function(){ toast('Лого сохранено'); load(); });
-      };
-      reader.readAsDataURL(file);
     });
   });
   Array.prototype.forEach.call(host.querySelectorAll('[data-del-c]'), function(el){
