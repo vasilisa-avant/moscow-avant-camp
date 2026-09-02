@@ -29,6 +29,8 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .roster-row:hover{background:#fafafa}
 .roster-row.travel{background:var(--travel-bg)}
 .roster-row.active .top{outline:2px solid var(--accent);outline-offset:-2px}
+.roster-expand{margin-left:auto;flex:none;padding:4px 8px;font-size:14px;color:var(--ink-3);cursor:pointer;line-height:1}
+.roster-expand:hover{color:var(--accent)}
 .roster-ph{width:30px;height:42px;flex:none;background:#f4f4f4;overflow:hidden;border:1px solid var(--line-2)}
 .roster-ph img{width:100%;height:100%;object-fit:cover;display:block}
 .roster-ph.logo{width:46px;height:32px;background:#fff}
@@ -90,6 +92,13 @@ select,.btn{font:400 11px Ubuntu,sans-serif;letter-spacing:.5px;text-transform:u
 .chk-add input{flex:1;border:none;border-bottom:1px solid var(--line);font:300 12px Ubuntu;padding:5px 0}
 .readonly-note{font-size:10px;color:var(--ink-3);letter-spacing:.3px;margin-top:8px}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:50}
+.hoverpop{position:fixed;z-index:70;background:#fff;border:1px solid var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.15);padding:12px 14px;width:220px;font-size:12px}
+.hoverpop .hp-name{font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.hoverpop label{display:block;font-size:9px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.5px;margin-top:8px}
+.hoverpop input[type=text]{width:100%;border:none;border-bottom:1px solid var(--line);font:300 12px Ubuntu;padding:4px 0;margin-top:2px;background:none}
+.hoverpop select{width:100%;border:1px solid var(--line);padding:4px;margin-top:2px;font:300 12px Ubuntu}
+.hoverpop .hp-chk{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px}
+.hoverpop .hp-save{width:100%;margin-top:10px}
 .modal{background:#fff;padding:24px;width:380px;max-width:92vw;max-height:88vh;overflow:auto}
 .modal h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:0 0 14px}
 .modal label{display:block;font-size:9px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.5px;margin-top:10px}
@@ -138,6 +147,7 @@ select,.btn{font:400 11px Ubuntu,sans-serif;letter-spacing:.5px;text-transform:u
 <header id="head"></header>
 <main id="app"><div class="loading">Загрузка…</div></main>
 <div id="modalRoot"></div>
+<div id="hoverPopRoot"></div>
 <div id="toast"></div>
 <script>
 var TOKEN = (new URLSearchParams(location.search)).get('k') || '';
@@ -502,6 +512,7 @@ function renderRoster(){
           '<div class="roster-name">' + esc(p.name) + '</div>' +
           '<div class="roster-status">' + esc(p.status) + '</div>' +
         '</div>' +
+        '<div class="roster-expand" data-expand="' + p.id + '" title="Открыть карточку (фото, адрес и т.д.)">⋯</div>' +
       '</div>' +
       '<div class="roster-fields">' +
         '<label>Доступность по дням</label>' +
@@ -527,12 +538,19 @@ function renderRoster(){
 
   Array.prototype.forEach.call(host.querySelectorAll('.roster-row .top'), function(el){
     el.onclick = function(ev){
+      if (ev.target.closest('[data-expand]')) return;
       ev.stopPropagation();
       var row = el.parentElement;
       var pid = row.getAttribute('data-p');
       if (FILTER === pid) { FILTER = null; } else { FILTER = pid; }
       renderAgent();
     };
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-expand]'), function(el){
+    el.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      el.closest('.roster-row').classList.toggle('open');
+    });
   });
   Array.prototype.forEach.call(host.querySelectorAll('[data-field]'), function(el){
     el.addEventListener('click', function(ev){ ev.stopPropagation(); });
@@ -576,6 +594,64 @@ function renderRoster(){
       row.classList.toggle('open');
     });
   });
+
+  // при наведении — быстрый бокс: приезжая (+ где живёт) и статус, с сохранением
+  Array.prototype.forEach.call(host.querySelectorAll('.roster-row'), function(row){
+    var pid = row.getAttribute('data-p');
+    row.addEventListener('mouseenter', function(){ scheduleHoverPop(pid, row); });
+    row.addEventListener('mouseleave', function(){ scheduleHideHoverPop(); });
+  });
+}
+
+var HOVER_SHOW_T = null, HOVER_HIDE_T = null;
+function scheduleHoverPop(pid, anchorEl){
+  clearTimeout(HOVER_HIDE_T);
+  clearTimeout(HOVER_SHOW_T);
+  HOVER_SHOW_T = setTimeout(function(){ showHoverPop(pid, anchorEl); }, 250);
+}
+function scheduleHideHoverPop(){
+  clearTimeout(HOVER_SHOW_T);
+  HOVER_HIDE_T = setTimeout(hideHoverPop, 250);
+}
+function showHoverPop(pid, anchorEl){
+  var p = byId(STATE.participants, pid);
+  if (!p) return;
+  var root = document.getElementById('hoverPopRoot');
+  var rect = anchorEl.getBoundingClientRect();
+  var top = Math.min(rect.top, window.innerHeight - 260);
+  var left = rect.right + 8;
+  if (left + 220 > window.innerWidth) left = rect.left - 228;
+  root.innerHTML = '<div class="hoverpop" style="top:' + Math.max(8, top) + 'px;left:' + Math.max(8, left) + 'px">' +
+    '<div class="hp-name">' + esc(p.name) + '</div>' +
+    '<div class="hp-chk"><input type="checkbox" id="hpTravel" ' + (p.travel?'checked':'') + '> <label style="margin:0">Приезжая</label></div>' +
+    '<label>Где живёт / разместят</label>' +
+    '<input type="text" id="hpAddress" value="' + esc(p.moscow_address || p.home_address) + '">' +
+    '<label>Статус</label>' +
+    '<select id="hpStatus">' +
+      '<option' + (p.status==='обязательно'?' selected':'') + '>обязательно</option>' +
+      '<option' + (p.status==='опционально'?' selected':'') + '>опционально</option>' +
+    '</select>' +
+    '<button class="btn primary hp-save" id="hpSave">Сохранить</button>' +
+  '</div>';
+  var pop = root.firstChild;
+  pop.addEventListener('mouseenter', function(){ clearTimeout(HOVER_HIDE_T); });
+  pop.addEventListener('mouseleave', scheduleHideHoverPop);
+  document.getElementById('hpSave').onclick = function(){
+    var travel = document.getElementById('hpTravel').checked;
+    var address = document.getElementById('hpAddress').value;
+    var status = document.getElementById('hpStatus').value;
+    Promise.all([
+      call('saveParticipantField', TOKEN, pid, 'travel', travel),
+      call('saveParticipantField', TOKEN, pid, 'moscow_address', address),
+      call('saveParticipantField', TOKEN, pid, 'status', status)
+    ]).then(function(){
+      p.travel = travel; p.moscow_address = address; p.status = status;
+      flashSaved(); hideHoverPop(); renderRoster();
+    });
+  };
+}
+function hideHoverPop(){
+  document.getElementById('hoverPopRoot').innerHTML = '';
 }
 
 function renderClientRoster(){
