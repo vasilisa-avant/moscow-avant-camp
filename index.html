@@ -219,6 +219,7 @@ function load(){
       return;
     }
     STATE = state;
+    STATE.participants.sort(function(a, b){ return a.name.localeCompare(b.name, 'ru'); });
     STATE.images = STATE.images || {};
     KNOWN_REV = state.rev;
     hideUpdateBar();
