@@ -6,6 +6,7 @@
  --cat-shoot:#E93F97;--cat-shoot-bg:#FCEAF3;
  --cat-class:#B8863B;--cat-class-bg:#F4EEE3;
  --cat-client:#4A6FA5;--cat-client-bg:#E6EBF2;
+ --cat-lev:#6B3FA0;--cat-lev-bg:#EFE7F5;
  --travel-bg:#FBEAF3;--row-h:26px}
 *{box-sizing:border-box}
 body{margin:0;background:#fff;color:var(--ink);font:300 14px/1.5 Ubuntu,-apple-system,Segoe UI,sans-serif}
@@ -56,6 +57,7 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .daycol .levwin{position:absolute;left:0;right:0;border-top:1px dashed var(--cat-shoot);border-bottom:1px dashed var(--cat-shoot);pointer-events:none;z-index:5;opacity:.6}
 .slot{position:absolute;border-left:3px solid;border-radius:2px;padding:3px 6px;overflow:hidden;font-size:10px;cursor:pointer;box-sizing:border-box}
 .slot.cat-shoot{background:var(--cat-shoot-bg);border-color:var(--cat-shoot)}
+.slot.lev{background:var(--cat-lev-bg);border-color:var(--cat-lev)}
 .slot.cat-class{background:var(--cat-class-bg);border-color:var(--cat-class)}
 .slot.cat-client{background:var(--cat-client-bg);border-color:var(--cat-client)}
 .slot .t{font-size:9px;color:var(--ink-3);letter-spacing:.5px}
@@ -360,8 +362,7 @@ function buildCalendar(editable){
   }).join('') + '</div>';
 
   var head = '<div class="cal-corner"></div>' + STATE.days.map(function(d){
-    var levNote = editable ? '<span class="daylabel-lev">Лев ' + STATE.levWindow.start + '–' + STATE.levWindow.end + '</span>' : '';
-    return '<div class="cal-daylabel">' + esc(d.label) + levNote + '</div>';
+    return '<div class="cal-daylabel">' + esc(d.label) + '</div>';
   }).join('');
 
   var cols = STATE.days.map(function(d){
@@ -379,11 +380,6 @@ function buildCalendar(editable){
     if (d.dayStart && toMin(d.dayStart) > toMin(STATE.gridStart)) {
       off = '<div class="off" style="height:' + topPx(d.dayStart) + 'px"></div>';
     }
-    var levTop = Math.max(topPx(STATE.levWindow.start), d.dayStart ? topPx(d.dayStart) : 0);
-    var levBottom = topPx(STATE.levWindow.end);
-    var lev = (editable && levBottom > levTop)
-      ? '<div class="levwin" style="top:' + levTop + 'px;height:' + (levBottom - levTop) + 'px"></div>'
-      : '';
     // Приоритет по уровням: Лев — всегда на всю ширину дня (весь кэмп
     // строится вокруг него). Остальная съёмка (второй фотограф/визажист/
     // парикмахер/стилист) — на всю ширину, если не пересекается со Львом,
@@ -402,7 +398,7 @@ function buildCalendar(editable){
       var top = topPx(s.start), h = Math.max(20, topPx(s.end) - topPx(s.start));
       var colW = 100 / cols, wPct = colW, lPct = col * colW;
       if (secondary) { wPct = colW * 0.55; lPct = col * colW + (colW - wPct); }
-      var cls = 'slot cat-' + s.category + (secondary ? ' secondary' : '');
+      var cls = 'slot cat-' + s.category + (isLev(s) ? ' lev' : '') + (secondary ? ' secondary' : '');
       if (FILTER) {
         var mine = (s.participant_ids||[]).indexOf(FILTER) >= 0;
         cls += mine ? ' mine' : ' dim';
@@ -432,10 +428,12 @@ function buildCalendar(editable){
   }).join('');
 
   var legend = editable
-    ? '<span><i style="border-color:var(--cat-shoot)"></i>Съёмка / визажист / парикмахер / стилист</span>' +
+    ? '<span><i style="border-color:var(--cat-lev)"></i>Лев Яшин</span>' +
+      '<span><i style="border-color:var(--cat-shoot)"></i>Визажист / парикмахер / стилист / второй фотограф</span>' +
       '<span><i style="border-color:var(--cat-class)"></i>Мастер-классы</span>' +
       '<span><i style="border-color:var(--cat-client)"></i>Клиенты</span>'
-    : '<span><i style="border-color:var(--cat-shoot)"></i>Съёмка / визажист / парикмахер / стилист — видно, только если вы в неё добавлены</span>' +
+    : '<span><i style="border-color:var(--cat-lev)"></i>Лев Яшин</span>' +
+      '<span><i style="border-color:var(--cat-shoot)"></i>Визажист / парикмахер / стилист / второй фотограф — видно, только если вы в неё добавлены</span>' +
       '<span><i style="border-color:var(--cat-class)"></i>Мастер-классы</span>';
   return '<div class="cal">' + head + gutter + cols + '</div>' +
     '<div class="legend">' + legend + '</div>';
