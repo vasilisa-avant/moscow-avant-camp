@@ -717,7 +717,7 @@ function openSlotModal(day, startY, existing){
         '<label>Вид съёмки (если фотограф)</label><select id="mShootKind"><option value="">—</option>' + STATE.shootKinds.map(function(x){
           return '<option' + (s.shoot_kind===x?' selected':'') + '>' + esc(x) + '</option>';
         }).join('') + '</select>' +
-        '<label>Модель (фото обязательно для слота фотографа)</label>' +
+        '<label>Модель (необязательно — можно добавить позже отдельным слотом на конкретное время)</label>' +
         '<div class="multi">' + participantPicker(s.participant_ids, true) + '</div>';
     } else if (s.category === 'class') {
       f.innerHTML =
@@ -783,9 +783,6 @@ function openSlotModal(day, startY, existing){
     var titleEl = document.getElementById('mTitle'); if (titleEl) s.title = titleEl.value;
     var kindEl = document.getElementById('mShootKind'); if (kindEl) s.shoot_kind = kindEl.value;
     var cliEl = document.getElementById('mClient'); if (cliEl) s.client_id = cliEl.value;
-    if (s.category === 'shoot' && s.subtype.indexOf('Фотограф') === 0 && !s.participant_ids.length) {
-      toast('Для слота фотографа нужна модель'); return;
-    }
     call('upsertSlot', TOKEN, s).then(function(){ root.innerHTML = ''; toast('Сохранено'); load(); });
   };
 }
