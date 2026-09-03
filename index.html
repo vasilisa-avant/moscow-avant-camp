@@ -79,15 +79,23 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .slot.dim{opacity:.22}
 .slot.mine{outline:2px solid var(--ink);outline-offset:-2px}
 .slot.secondary{box-shadow:0 1px 4px rgba(0,0,0,.18);font-size:9px}
-.slot.secondary .ti{font-size:8px;text-transform:none;letter-spacing:0;white-space:normal;overflow:hidden;text-overflow:clip;word-break:normal;overflow-wrap:break-word;line-height:1.2}
+.slot.secondary .ti{font-size:8px;text-transform:none;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.slot.secondary .t{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%}
 .slot.secondary .av{width:22px}
 .slot.secondary .av img,.slot.secondary .av .initial{width:18px;height:18px;font-size:8px}
 .slot.secondary .av span{max-width:24px;font-size:7px}
-.slot-marker{position:absolute;left:0;right:0;border-top:1px dashed rgba(0,0,0,.4);pointer-events:none}
-.slot-marker-label{position:absolute;top:-6px;right:3px;font-size:7px;line-height:1;background:rgba(255,255,255,.85);padding:0 3px;color:var(--ink-2);white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+.slot-marker{position:absolute;left:0;right:0;border-top:1px dashed rgba(0,0,0,.45);pointer-events:none;z-index:3}
+.slot-marker.has-range{border-bottom:1px dashed rgba(0,0,0,.3);background:rgba(0,0,0,.04)}
+.slot-marker-time{position:absolute;top:-7px;left:2px;font-size:7px;line-height:1;background:rgba(255,255,255,.9);padding:0 2px;color:var(--ink-2);white-space:nowrap}
+.slot-marker-avatars{position:absolute;top:2px;left:2px;display:flex;gap:3px;flex-wrap:wrap}
+.slot-marker-avatars .av{width:24px;flex:none;display:flex;flex-direction:column;align-items:center}
+.slot-marker-avatars .av img,.slot-marker-avatars .av .initial{width:20px;height:20px;border-radius:50%;object-fit:cover;background:#eee;font-size:9px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.15)}
+.slot-marker-avatars .av span{font-size:7px;text-align:center;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:26px;margin-top:1px}
 .ptimes{margin:2px 0 8px}
 .ptime-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px solid var(--line-2)}
 .ptime-row input[type=time]{border:1px solid var(--line);padding:3px 4px;font:300 11px Ubuntu}
+.ptime-range{display:flex;align-items:center;gap:4px;flex:none}
+.ptime-sep{color:var(--ink-3)}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);margin:14px 0 0}
 .legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border-left:3px solid}
 .filterbar{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
@@ -340,6 +348,16 @@ function flashSaved(){
 
 function toMin(hhmm){ var p = String(hhmm||'00:00').split(':'); return (+p[0])*60 + (+p[1]); }
 function topPx(hhmm){ return (toMin(hhmm) - toMin(STATE.gridStart)) / 30 * 26; }
+
+// participant_times[pid] — время конкретной участницы внутри общего блока
+// (съёмка/класс/клиент), формат {start,end}. Старые записи могли быть просто
+// строкой "11:00" (без конца) — оборачиваем их сюда же, чтобы не мигрировать
+// данные отдельно.
+function normPT_(pt){
+  if (!pt) return null;
+  if (typeof pt === 'string') return { start: pt, end: '' };
+  return pt.start ? pt : null;
+}
 function snapTime(px){
   var slot = Math.round(px / 26);
   var mins = toMin(STATE.gridStart) + slot * 30;
@@ -390,19 +408,20 @@ function catLabelShort(s){
   return catLabel(s);
 }
 
-function slotAvatarsHtml(s){
+// ids — необязательный список конкретных участниц (когда часть уже показана
+// на пунктирных метках по времени, здесь остаются только те, у кого время не
+// выставлено). Без ids — берём всех, как раньше.
+function slotAvatarsHtml(s, ids){
   var out = '';
   if (s.category === 'client') {
     var c = byId(STATE.clients, s.client_id);
     if (c) { var cSrc = photoSrc(c.logo_id); out += '<div class="av">' + (cSrc ? '<img src="'+esc(cSrc)+'">' : '<div class="initial">'+esc(c.name[0])+'</div>') + '<span>'+esc(c.name)+'</span></div>'; }
   }
-  (s.participant_ids||[]).forEach(function(pid){
+  (ids || s.participant_ids || []).forEach(function(pid){
     var p = byId(STATE.participants, pid);
     if (!p) return;
     var pSrc = photoSrc(p.photo_id);
-    var pt = (s.participant_times||{})[pid];
-    var label = pt ? (pt + ' ' + p.name.split(' ')[0]) : p.name.split(' ')[0];
-    out += '<div class="av">' + (pSrc ? '<img src="'+esc(pSrc)+'">' : '<div class="initial">'+esc(p.name[0])+'</div>') + '<span>'+esc(label)+'</span></div>';
+    out += '<div class="av">' + (pSrc ? '<img src="'+esc(pSrc)+'">' : '<div class="initial">'+esc(p.name[0])+'</div>') + '<span>'+esc(p.name.split(' ')[0])+'</span></div>';
   });
   return out ? '<div class="avatars">'+out+'</div>' : '';
 }
@@ -467,38 +486,54 @@ function buildCalendar(editable){
       }
       var style = 'top:' + top + 'px;height:' + h + 'px;' +
         'left:calc(' + lPct + '% + 3px);width:calc(' + wPct + '% - 6px)';
-      var fullLabel = catLabel(s) + (s.shoot_kind ? ' · ' + s.shoot_kind : '');
-      // пунктирные метки на временной шкале блока — на каком часу блока
-      // снимается конкретная модель. Одно время — общая линия, имена рядом.
-      var markers = '';
-      if (s.category === 'shoot' && s.participant_times) {
-        var byTime = {};
+      var baseLabel = catLabel(s) + (s.shoot_kind ? ' · ' + s.shoot_kind : '');
+      // Пунктирные метки на временной шкале блока — фото моделей стоят ровно
+      // напротив своего часа (11:00 снимается — фото на линии 11:00, и т.д.),
+      // а не общей строкой сверху блока. Одно время — общая линия, фото рядом.
+      var markers = '', timedIds = [];
+      var tooltipTimes = '';
+      if (s.participant_times) {
+        var byRange = {};
         (s.participant_ids||[]).forEach(function(pid){
-          var t = s.participant_times[pid];
-          if (!t) return;
-          (byTime[t] = byTime[t] || []).push(pid);
+          var pt = normPT_(s.participant_times[pid]);
+          if (!pt) return;
+          timedIds.push(pid);
+          var key = pt.start + '|' + (pt.end || '');
+          (byRange[key] = byRange[key] || { start: pt.start, end: pt.end, ids: [] }).ids.push(pid);
         });
-        var times = Object.keys(byTime).sort();
-        markers = times.map(function(t){
-          var relTop = topPx(t) - top;
+        var keys = Object.keys(byRange).sort();
+        var rangeLabel = function(r){ return r.end ? (r.start + '–' + r.end) : r.start; };
+        tooltipTimes = keys.map(function(key){
+          var r = byRange[key];
+          return rangeLabel(r) + ' ' + r.ids.map(function(pid){ var pp = byId(STATE.participants, pid); return pp ? pp.name : ''; }).join(', ');
+        }).join('; ');
+        markers = keys.map(function(key){
+          var r = byRange[key];
+          var relTop = topPx(r.start) - top;
           if (relTop < 2 || relTop > h - 2) return '';
-          var names = byTime[t].map(function(pid){ var pp = byId(STATE.participants, pid); return pp ? pp.name.split(' ')[0] : ''; }).join(', ');
-          return '<div class="slot-marker" style="top:' + relTop + 'px"><span class="slot-marker-label">' + esc(t + ' ' + names) + '</span></div>';
+          var bandH = r.end ? Math.max(0, topPx(r.end) - topPx(r.start)) : 0;
+          var avs = r.ids.map(function(pid){
+            var pp = byId(STATE.participants, pid);
+            if (!pp) return '';
+            var pSrc = photoSrc(pp.photo_id);
+            return '<div class="av">' + (pSrc ? '<img src="'+esc(pSrc)+'">' : '<div class="initial">'+esc(pp.name[0])+'</div>') + '<span>'+esc(pp.name.split(' ')[0])+'</span></div>';
+          }).join('');
+          var bandStyle = bandH > 0 ? ';height:' + bandH + 'px' : '';
+          return '<div class="slot-marker' + (bandH>0?' has-range':'') + '" style="top:' + relTop + 'px' + bandStyle + '">' +
+            '<span class="slot-marker-time">' + esc(rangeLabel(r)) + '</span>' +
+            '<div class="slot-marker-avatars">' + avs + '</div>' +
+          '</div>';
         }).join('');
       }
-      if (s.category === 'shoot' && s.participant_times) {
-        var timesTxt = (s.participant_ids||[]).map(function(pid){
-          var pp = byId(STATE.participants, pid), t = s.participant_times[pid];
-          return t ? (t + ' ' + (pp ? pp.name : '')) : null;
-        }).filter(Boolean).join(', ');
-        if (timesTxt) fullLabel += ' — ' + timesTxt;
-      }
-      var shownLabel = secondary ? catLabelShort(s) : fullLabel;
-      return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '" title="' + esc(s.start + '–' + s.end + ' ' + fullLabel) + '">' +
+      // Модели без выставленного времени — обычной строкой аватарок сверху.
+      var untimedIds = (s.participant_ids||[]).filter(function(pid){ return timedIds.indexOf(pid) < 0; });
+      var tooltipLabel = baseLabel + (tooltipTimes ? ' — ' + tooltipTimes : '');
+      var shownLabel = secondary ? catLabelShort(s) : baseLabel;
+      return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '" title="' + esc(s.start + '–' + s.end + ' ' + tooltipLabel) + '">' +
         markers +
         '<div class="t">' + s.start + '–' + s.end + '</div>' +
         '<div class="ti">' + esc(shownLabel) + '</div>' +
-        slotAvatarsHtml(s) +
+        slotAvatarsHtml(s, untimedIds) +
         '</div>';
     }
 
@@ -987,7 +1022,7 @@ function openSlotModal(day, startY, existing){
         '<label>Вид съёмки (если фотограф)</label><select id="mShootKind"><option value="">—</option>' + STATE.shootKinds.map(function(x){
           return '<option' + (s.shoot_kind===x?' selected':'') + '>' + esc(x) + '</option>';
         }).join('') + '</select>' +
-        '<label>Модели (можно выбрать несколько — и указать точное время съёмки каждой ниже)</label>' +
+        '<label>Модели (можно выбрать несколько — и указать точное время каждой ниже)</label>' +
         '<div class="multi">' + participantPicker(s.participant_ids, false) + '</div>' +
         participantTimesHtml();
     } else if (s.category === 'class') {
@@ -995,13 +1030,15 @@ function openSlotModal(day, startY, existing){
         '<label>Тип класса</label><select id="mSubtype">' + STATE.classTypes.map(function(x){
           return '<option' + (s.subtype===x?' selected':'') + '>' + esc(x) + '</option>';
         }).join('') + '</select>' +
-        '<label>Участницы</label><div class="multi">' + participantPicker(s.participant_ids, false) + '</div>';
+        '<label>Участницы (и время каждой ниже)</label><div class="multi">' + participantPicker(s.participant_ids, false) + '</div>' +
+        participantTimesHtml();
     } else {
       f.innerHTML =
         '<label>Клиент</label><select id="mClient">' + STATE.clients.map(function(c){
           return '<option value="'+c.id+'"' + (s.client_id===c.id?' selected':'') + '>' + esc(c.name) + '</option>';
         }).join('') + '</select>' +
-        '<label>Модели у клиента (если нужно)</label><div class="multi">' + participantPicker(s.participant_ids, false) + '</div>';
+        '<label>Модели у клиента (и время каждой ниже)</label><div class="multi">' + participantPicker(s.participant_ids, false) + '</div>' +
+        participantTimesHtml();
     }
     bindPicker();
   }
@@ -1012,21 +1049,31 @@ function openSlotModal(day, startY, existing){
       return '<span class="pill' + (on?' on':'') + '" data-pp="' + p.id + '" data-single="' + (single?'1':'0') + '">' + esc(p.name) + '</span>';
     }).join('');
   }
-  // время съёмки каждой конкретной модели внутри общего блока (например,
-  // Лев снимает 10:00–18:00, а у Милана — ровно 11:00) — чтобы на календаре
-  // было видно пунктиром, когда именно её час
+  // время каждой конкретной модели внутри общего блока — С и ДО (например,
+  // блок Льва весь день 10:00–18:00, а конкретная модель снимается у него
+  // только 11:00–11:30) — чтобы на календаре было видно пунктиром, когда
+  // именно её час. Работает для съёмки, класса и клиента — везде, где может
+  // быть занята модель.
   function participantTimesHtml(){
     if (!s.participant_ids.length) return '';
     return '<div class="ptimes">' + s.participant_ids.map(function(id){
       var p = byId(STATE.participants, id);
+      var pt = normPT_(s.participant_times[id]) || { start: '', end: '' };
       return '<div class="ptime-row"><span>' + esc(p ? p.name : id) + '</span>' +
-        '<input type="time" data-ptime="' + id + '" value="' + esc(s.participant_times[id] || '') + '"></div>';
+        '<div class="ptime-range">' +
+          '<input type="time" data-ptime-start="' + id + '" value="' + esc(pt.start) + '">' +
+          '<span class="ptime-sep">–</span>' +
+          '<input type="time" data-ptime-end="' + id + '" value="' + esc(pt.end) + '">' +
+        '</div></div>';
     }).join('') + '</div>';
   }
   function syncPTimes(){
-    Array.prototype.forEach.call(root.querySelectorAll('[data-ptime]'), function(el){
-      var id = el.getAttribute('data-ptime');
-      if (el.value) s.participant_times[id] = el.value; else delete s.participant_times[id];
+    s.participant_ids.forEach(function(id){
+      var startEl = root.querySelector('[data-ptime-start="' + id + '"]');
+      var endEl = root.querySelector('[data-ptime-end="' + id + '"]');
+      var start = startEl ? startEl.value : '', end = endEl ? endEl.value : '';
+      if (start) s.participant_times[id] = { start: start, end: end };
+      else delete s.participant_times[id];
     });
   }
   function bindPicker(){
