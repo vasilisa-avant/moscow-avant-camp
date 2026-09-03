@@ -78,15 +78,6 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .slot .av span{font-size:8px;text-align:center;line-height:1.1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:36px}
 .slot.dim{opacity:.22}
 .slot.mine{outline:2px solid var(--ink);outline-offset:-2px}
-/* По ссылке модели: у блока со временем конкретных моделей заливка всего
-   блока приглушается (весь день Льва целиком не "мой"), а полоса именно
-   моего времени подсвечивается родным цветом категории поверх — сразу видно
-   ровно свой час, а не весь чужой рабочий день. */
-.slot.time-scoped{background:#fafafa!important}
-/* цветная полоса своего времени и так видна как "моё" — чёрная рамка вокруг
-   всего чужого рабочего дня поверх неё только мешает */
-.slot.mine.time-scoped{outline:none}
-.slot .my-highlight{position:absolute;left:0;right:0;z-index:1;pointer-events:none}
 .slot.secondary{box-shadow:0 1px 4px rgba(0,0,0,.18);font-size:9px}
 .slot.secondary .ti{font-size:8px;text-transform:none;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 .slot.secondary .t{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%}
@@ -493,7 +484,19 @@ function buildCalendar(editable){
     };
 
     function renderBlock(s, col, cols, secondary){
-      var top = topPx(s.start), h = Math.max(20, topPx(s.end) - topPx(s.start));
+      // По ссылке модели: если у блока проставлено именно её время внутри
+      // (например, Лев снимает весь день, а она — только с 15:00 до 16:00),
+      // ей рисуем не весь чужой рабочий день, а маленький слот ровно на её
+      // время, с простой подписью категории ("Фотограф" вместо имени).
+      var myScopedPt = (!editable && FILTER && s.category === 'shoot' && s.participant_times)
+        ? normPT_(s.participant_times[FILTER]) : null;
+      var top, h;
+      if (myScopedPt) {
+        top = topPx(myScopedPt.start);
+        h = myScopedPt.end ? Math.max(20, topPx(myScopedPt.end) - topPx(myScopedPt.start)) : 52;
+      } else {
+        top = topPx(s.start); h = Math.max(20, topPx(s.end) - topPx(s.start));
+      }
       var colW = 100 / cols, wPct = colW, lPct = col * colW;
       if (secondary) {
         // Все второстепенные слоты (пересекающиеся со Львом) вместе делят ОДНУ
@@ -504,12 +507,22 @@ function buildCalendar(editable){
         lPct = (100 - zone) + col * wPct;
       }
       var cls = 'slot cat-' + s.category + (isLev(s) ? ' lev' : '') + (secondary ? ' secondary' : '');
-      if (FILTER) {
+      if (FILTER && !myScopedPt) {
         var mine = (s.participant_ids||[]).indexOf(FILTER) >= 0;
         cls += mine ? ' mine' : ' dim';
       }
       var style = 'top:' + top + 'px;height:' + h + 'px;' +
         'left:calc(' + lPct + '% + 3px);width:calc(' + wPct + '% - 6px)';
+      if (myScopedPt) {
+        // Простой маленький слот ровно на своё время — без чужих меток,
+        // чужих аватарок и родного тултипа: тут и так всё понятно с одного
+        // взгляда, это ровно её час.
+        var myLabel = isLev(s) ? 'Фотограф' : catLabel(s);
+        return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '">' +
+          '<div class="t">' + myScopedPt.start + (myScopedPt.end ? '–' + myScopedPt.end : '') + '</div>' +
+          '<div class="ti">' + esc(myLabel) + '</div>' +
+        '</div>';
+      }
       // Моделям имя фотографа Льва не показываем — просто "Фотограф"
       // фиолетовым (цвет категории), когда её к нему назначили. Агент же
       // видит полное "Фотограф — Лев Ефимов", как обычно.
@@ -586,25 +599,7 @@ function buildCalendar(editable){
       // при наведении и так раскрывается сам блок с подписями, а два всплытия
       // сразу (родной тултип + наш раскрытый блок) только мешают друг другу.
       var titleAttr = secondary ? '' : ' title="' + esc(s.start + '–' + s.end + ' ' + tooltipLabel) + '"';
-      // По ссылке модели (не агента): если у блока есть время конкретных
-      // участниц и она сама там есть — выделяем ТОЛЬКО её время цветным
-      // блоком, а весь остальной блок (не её часы) визуально приглушаем,
-      // чтобы не путать "здесь снимает Лев весь день" с "здесь снимаю я".
-      var myHighlight = '';
-      if (!editable && FILTER && s.participant_times) {
-        var myPt = normPT_(s.participant_times[FILTER]);
-        if (myPt) {
-          cls += ' time-scoped';
-          var myTop = Math.max(topPx(myPt.start) - top, 36);
-          var myH = myPt.end ? Math.max(20, topPx(myPt.end) - topPx(myPt.start)) : 40;
-          myTop = Math.min(myTop, Math.max(0, h - myH));
-          var bgVar = isLev(s) ? '--cat-lev-bg' : s.category === 'shoot' ? '--cat-shoot-bg' : s.category === 'class' ? '--cat-class-bg' : '--cat-client-bg';
-          var borderVar = isLev(s) ? '--cat-lev' : s.category === 'shoot' ? '--cat-shoot' : s.category === 'class' ? '--cat-class' : '--cat-client';
-          myHighlight = '<div class="my-highlight" style="top:' + myTop + 'px;height:' + myH + 'px;background:var(' + bgVar + ');border-top:2px solid var(' + borderVar + ');border-bottom:2px solid var(' + borderVar + ')"></div>';
-        }
-      }
       return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '"' + titleAttr + '>' +
-        myHighlight +
         markers +
         '<div class="t">' + s.start + '–' + s.end + '</div>' +
         '<div class="ti">' + esc(shownLabel) + '</div>' +
