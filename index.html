@@ -1075,6 +1075,31 @@ function openSlotModal(day, startY, existing){
     var titleEl = document.getElementById('mTitle'); if (titleEl) s.title = titleEl.value;
     var kindEl = document.getElementById('mShootKind'); if (kindEl) s.shoot_kind = kindEl.value;
     var cliEl = document.getElementById('mClient'); if (cliEl) s.client_id = cliEl.value;
+
+    // Лев на день бывает только один — если это слот с его подтипом на день,
+    // где такой слот уже есть (при создании нового, или при переключении
+    // подтипа на Льва у другого слота), не плодим второй слот, а сливаем
+    // выбранных моделей и их время в уже существующее окно Льва: так у него
+    // остаётся одно окно на день, и все, кто в нём снимается, видны пунктиром
+    // на общей шкале, а не отдельными узкими блоками рядом.
+    if (s.category === 'shoot' && s.subtype === STATE.shootSubtypes[0]) {
+      var already = STATE.slots.find(function(x){
+        return x.id !== s.id && x.day === s.day && x.category === 'shoot' && x.subtype === STATE.shootSubtypes[0];
+      });
+      if (already) {
+        var mergedIds = already.participant_ids.slice();
+        (s.participant_ids || []).forEach(function(pid){ if (mergedIds.indexOf(pid) < 0) mergedIds.push(pid); });
+        var mergedTimes = {};
+        Object.keys(already.participant_times || {}).forEach(function(k){ mergedTimes[k] = already.participant_times[k]; });
+        Object.keys(s.participant_times || {}).forEach(function(k){ mergedTimes[k] = s.participant_times[k]; });
+        s.id = already.id;
+        s.start = already.start; s.end = already.end;
+        s.title = already.title; s.notes = already.notes || s.notes;
+        s.participant_ids = mergedIds;
+        s.participant_times = mergedTimes;
+      }
+    }
+
     call('upsertSlot', TOKEN, s).then(function(){ root.innerHTML = ''; toast('Сохранено'); load(); });
   };
 }
