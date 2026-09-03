@@ -1056,7 +1056,13 @@ function openSlotModal(day, startY, existing){
   // быть занята модель.
   function participantTimesHtml(){
     if (!s.participant_ids.length) return '';
-    return '<div class="ptimes">' + s.participant_ids.map(function(id){
+    // по хронологии — у кого время раньше, та выше в списке; без времени — в конец
+    var ids = s.participant_ids.slice().sort(function(a, b){
+      var ta = normPT_(s.participant_times[a]), tb = normPT_(s.participant_times[b]);
+      var ka = ta ? ta.start : '99:99', kb = tb ? tb.start : '99:99';
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    });
+    return '<div class="ptimes">' + ids.map(function(id){
       var p = byId(STATE.participants, id);
       var pt = normPT_(s.participant_times[id]) || { start: '', end: '' };
       return '<div class="ptime-row"><span>' + esc(p ? p.name : id) + '</span>' +
