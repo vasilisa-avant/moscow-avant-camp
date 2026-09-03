@@ -91,6 +91,16 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
 .slot-marker-avatars .av{width:24px;flex:none;display:flex;flex-direction:column;align-items:center}
 .slot-marker-avatars .av img,.slot-marker-avatars .av .initial{width:20px;height:20px;border-radius:50%;object-fit:cover;background:#eee;font-size:9px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.15)}
 .slot-marker-avatars .av span{font-size:7px;text-align:center;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:26px;margin-top:1px}
+/* Узкие вторичные блоки: пунктирные метки показывают только фото — подписи
+   времени/имени там не помещаются. При наведении на весь блок он визуально
+   "раскрывается" (поднимается над соседями, чуть увеличивается) и подписи
+   появляются — видно, кто и во сколько снимается, не открывая карточку. */
+.slot-marker.compact .slot-marker-time,
+.slot-marker.compact .slot-marker-avatars .av span{display:none}
+.slot.secondary{transition:transform .12s ease,box-shadow .12s ease}
+.slot.secondary:hover{z-index:50;transform:scale(1.1);box-shadow:0 6px 18px rgba(0,0,0,.28);background:#fff}
+.slot.secondary:hover .slot-marker.compact .slot-marker-time,
+.slot.secondary:hover .slot-marker.compact .slot-marker-avatars .av span{display:block}
 .ptimes{margin:2px 0 8px}
 .ptime-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px solid var(--line-2)}
 .ptime-row input[type=time]{border:1px solid var(--line);padding:3px 4px;font:300 11px Ubuntu}
@@ -487,9 +497,11 @@ function buildCalendar(editable){
       var style = 'top:' + top + 'px;height:' + h + 'px;' +
         'left:calc(' + lPct + '% + 3px);width:calc(' + wPct + '% - 6px)';
       var baseLabel = catLabel(s) + (s.shoot_kind ? ' · ' + s.shoot_kind : '');
-      // Пунктирные метки на временной шкале блока — фото моделей стоят ровно
-      // напротив своего часа (11:00 снимается — фото на линии 11:00, и т.д.),
-      // а не общей строкой сверху блока. Одно время — общая линия, фото рядом.
+      // Пунктирная шкала времени: фото стоит на своей линии времени всегда
+      // (видно сразу, не только при наведении). В узких вторичных блоках
+      // (рядом со Львом) для подписи имени/времени физически нет места — там
+      // просто фото (класс .compact), а полная подпись и сам блок покрупнее
+      // раскрываются при наведении мышью (см. CSS ".slot:hover").
       var markers = '', timedIds = [];
       var tooltipTimes = '';
       if (s.participant_times) {
@@ -515,8 +527,9 @@ function buildCalendar(editable){
           // близко к краю", и модель пропадала с календаря вообще. Не
           // отбрасываем, просто визуально сдвигаем ниже строки-заголовка
           // блока (время/название), чтобы не наезжать на неё.
+          var headroom = secondary ? 14 : 20;
+          var visualTop = Math.max(relTop, headroom);
           if (relTop < -1 || relTop > h + 1) return '';
-          var visualTop = Math.max(relTop, 20);
           var bandH = r.end ? Math.max(0, topPx(r.end) - topPx(r.start)) : 0;
           var avs = r.ids.map(function(pid){
             var pp = byId(STATE.participants, pid);
@@ -531,7 +544,7 @@ function buildCalendar(editable){
           var offset = visualTop - relTop;
           var timeStyle = offset > 0 ? ' style="top:' + (-7 + offset) + 'px"' : '';
           var avStyle = offset > 0 ? ' style="top:' + (2 + offset) + 'px"' : '';
-          return '<div class="slot-marker' + (bandH>0?' has-range':'') + '" style="top:' + relTop + 'px' + bandStyle + '">' +
+          return '<div class="slot-marker' + (bandH>0?' has-range':'') + (secondary?' compact':'') + '" style="top:' + relTop + 'px' + bandStyle + '">' +
             '<span class="slot-marker-time"' + timeStyle + '>' + esc(rangeLabel(r)) + '</span>' +
             '<div class="slot-marker-avatars"' + avStyle + '>' + avs + '</div>' +
           '</div>';
