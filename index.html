@@ -411,7 +411,7 @@ function layoutDaySlots(daySlots){
 
 function catLabel(s){
   if (s.category === 'shoot') return (s.subtype || 'Съёмка') + (s.title ? ' — ' + s.title : '');
-  if (s.category === 'class') return s.subtype || 'Мастер-класс';
+  if (s.category === 'class') return (s.subtype || 'Мастер-класс') + (s.topic ? ' · ' + s.topic : '') + (s.title ? ' — ' + s.title : '');
   if (s.category === 'client') { var c = byId(STATE.clients, s.client_id); return c ? c.name : 'Клиент'; }
   return s.title || '';
 }
@@ -1057,9 +1057,10 @@ function renderChecklist(hostId, listName, items, editable){
 
 function openSlotModal(day, startY, existing){
   var s = existing || { id: null, day: day || STATE.days[0].key, start: startY ? snapTime(startY) : '10:00',
-    end: '11:00', category: 'shoot', subtype: STATE.shootSubtypes[0], title: '',
+    end: '11:00', category: 'shoot', subtype: STATE.shootSubtypes[0], title: '', topic: '',
     participant_ids: [], client_id: '', shoot_kind: '', notes: '', participant_times: {} };
   s.participant_times = s.participant_times || {};
+  s.topic = s.topic || '';
 
   var root = document.getElementById('modalRoot');
   root.innerHTML = '<div class="modal-bg"><div class="modal"><h3>' + (existing ? 'Слот в календаре' : 'Новый слот') + '</h3>' +
@@ -1100,6 +1101,10 @@ function openSlotModal(day, startY, existing){
         '<label>Тип класса</label><select id="mSubtype">' + STATE.classTypes.map(function(x){
           return '<option' + (s.subtype===x?' selected':'') + '>' + esc(x) + '</option>';
         }).join('') + '</select>' +
+        '<label>Тема (например, позинг)</label>' +
+        '<input id="mTopic" type="text" placeholder="необязательно" value="' + esc(s.topic) + '">' +
+        '<label>Кто проводит</label>' +
+        '<input id="mTitle" type="text" placeholder="имя специалиста" value="' + esc(s.title) + '">' +
         '<label>Участницы (и время каждой ниже)</label><div class="multi">' + participantPicker(s.participant_ids, false) + '</div>' +
         participantTimesHtml();
     } else {
@@ -1152,10 +1157,22 @@ function openSlotModal(day, startY, existing){
       else delete s.participant_times[id];
     });
   }
+  // Клик по пилюле участницы перерисовывает форму (renderFields), а она
+  // строится заново из объекта s — если не забрать в s то, что уже успели
+  // напечатать в текстовых полях (тема, имя ведущего и т.п.), напечатанное
+  // потеряется. Синхронизируем перед каждой перерисовкой.
+  function syncTextFields(){
+    var subEl = document.getElementById('mSubtype'); if (subEl) s.subtype = subEl.value;
+    var titleEl = document.getElementById('mTitle'); if (titleEl) s.title = titleEl.value;
+    var topicEl = document.getElementById('mTopic'); if (topicEl) s.topic = topicEl.value;
+    var kindEl = document.getElementById('mShootKind'); if (kindEl) s.shoot_kind = kindEl.value;
+    var cliEl = document.getElementById('mClient'); if (cliEl) s.client_id = cliEl.value;
+  }
   function bindPicker(){
     Array.prototype.forEach.call(root.querySelectorAll('[data-pp]'), function(el){
       el.onclick = function(){
         syncPTimes();
+        syncTextFields();
         var id = el.getAttribute('data-pp'), single = el.getAttribute('data-single') === '1';
         if (single) { s.participant_ids = el.classList.contains('on') ? [] : [id]; }
         else {
@@ -1196,6 +1213,7 @@ function openSlotModal(day, startY, existing){
     s.notes = document.getElementById('mNotes').value;
     var subEl = document.getElementById('mSubtype'); if (subEl) s.subtype = subEl.value;
     var titleEl = document.getElementById('mTitle'); if (titleEl) s.title = titleEl.value;
+    var topicEl = document.getElementById('mTopic'); if (topicEl) s.topic = topicEl.value;
     var kindEl = document.getElementById('mShootKind'); if (kindEl) s.shoot_kind = kindEl.value;
     var cliEl = document.getElementById('mClient'); if (cliEl) s.client_id = cliEl.value;
 
