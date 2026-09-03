@@ -83,6 +83,9 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
    моего времени подсвечивается родным цветом категории поверх — сразу видно
    ровно свой час, а не весь чужой рабочий день. */
 .slot.time-scoped{background:#fafafa!important}
+/* цветная полоса своего времени и так видна как "моё" — чёрная рамка вокруг
+   всего чужого рабочего дня поверх неё только мешает */
+.slot.mine.time-scoped{outline:none}
 .slot .my-highlight{position:absolute;left:0;right:0;z-index:1;pointer-events:none}
 .slot.secondary{box-shadow:0 1px 4px rgba(0,0,0,.18);font-size:9px}
 .slot.secondary .ti{font-size:8px;text-transform:none;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
