@@ -510,7 +510,13 @@ function buildCalendar(editable){
         markers = keys.map(function(key){
           var r = byRange[key];
           var relTop = topPx(r.start) - top;
-          if (relTop < 2 || relTop > h - 2) return '';
+          // время может совпасть точно с началом блока (модель снимается с
+          // самого открытия) — такую метку раньше отбрасывали как "слишком
+          // близко к краю", и модель пропадала с календаря вообще. Не
+          // отбрасываем, просто визуально сдвигаем ниже строки-заголовка
+          // блока (время/название), чтобы не наезжать на неё.
+          if (relTop < -1 || relTop > h + 1) return '';
+          var visualTop = Math.max(relTop, 20);
           var bandH = r.end ? Math.max(0, topPx(r.end) - topPx(r.start)) : 0;
           var avs = r.ids.map(function(pid){
             var pp = byId(STATE.participants, pid);
@@ -519,9 +525,15 @@ function buildCalendar(editable){
             return '<div class="av">' + (pSrc ? '<img src="'+esc(pSrc)+'">' : '<div class="initial">'+esc(pp.name[0])+'</div>') + '<span>'+esc(pp.name.split(' ')[0])+'</span></div>';
           }).join('');
           var bandStyle = bandH > 0 ? ';height:' + bandH + 'px' : '';
+          // сама пунктирная линия — на реальном времени (relTop), а вот
+          // фото и подпись при необходимости сдвигаем вниз (offset), чтобы
+          // не наезжать на заголовок блока у самого верха
+          var offset = visualTop - relTop;
+          var timeStyle = offset > 0 ? ' style="top:' + (-7 + offset) + 'px"' : '';
+          var avStyle = offset > 0 ? ' style="top:' + (2 + offset) + 'px"' : '';
           return '<div class="slot-marker' + (bandH>0?' has-range':'') + '" style="top:' + relTop + 'px' + bandStyle + '">' +
-            '<span class="slot-marker-time">' + esc(rangeLabel(r)) + '</span>' +
-            '<div class="slot-marker-avatars">' + avs + '</div>' +
+            '<span class="slot-marker-time"' + timeStyle + '>' + esc(rangeLabel(r)) + '</span>' +
+            '<div class="slot-marker-avatars"' + avStyle + '>' + avs + '</div>' +
           '</div>';
         }).join('');
       }
