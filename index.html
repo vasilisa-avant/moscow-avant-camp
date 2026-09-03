@@ -501,7 +501,11 @@ function buildCalendar(editable){
       }
       var style = 'top:' + top + 'px;height:' + h + 'px;' +
         'left:calc(' + lPct + '% + 3px);width:calc(' + wPct + '% - 6px)';
-      var baseLabel = catLabel(s) + (s.shoot_kind ? ' · ' + s.shoot_kind : '');
+      // Моделям имя фотографа Льва не показываем — просто "Фотограф"
+      // фиолетовым (цвет категории), когда её к нему назначили. Агент же
+      // видит полное "Фотограф — Лев Ефимов", как обычно.
+      var catLabelForView = (!editable && isLev(s)) ? 'Фотограф' : catLabel(s);
+      var baseLabel = catLabelForView + (s.shoot_kind ? ' · ' + s.shoot_kind : '');
       // Пунктирная шкала времени: фото стоит на своей линии времени всегда
       // (видно сразу, не только при наведении). В узких вторичных блоках
       // (рядом со Львом) для подписи имени/времени физически нет места — там
@@ -600,7 +604,7 @@ function buildCalendar(editable){
       '<span><i style="border-color:var(--cat-shoot)"></i>Визажист / парикмахер / стилист / второй фотограф</span>' +
       '<span><i style="border-color:var(--cat-class)"></i>Мастер-классы</span>' +
       '<span><i style="border-color:var(--cat-client)"></i>Клиенты</span>'
-    : '<span><i style="border-color:var(--cat-lev)"></i>Лев Ефимов</span>' +
+    : '<span><i style="border-color:var(--cat-lev)"></i>Фотограф</span>' +
       '<span><i style="border-color:var(--cat-shoot)"></i>Визажист / парикмахер / стилист / второй фотограф — видно, только если вы в неё добавлены</span>' +
       '<span><i style="border-color:var(--cat-class)"></i>Мастер-классы</span>';
   return '<div class="cal">' + head + gutter + cols + '</div>' +
