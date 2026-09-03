@@ -97,8 +97,12 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
    появляются — видно, кто и во сколько снимается, не открывая карточку. */
 .slot-marker.compact .slot-marker-time,
 .slot-marker.compact .slot-marker-avatars .av span{display:none}
-.slot.secondary{transition:transform .12s ease,box-shadow .12s ease}
-.slot.secondary:hover{z-index:50;transform:scale(1.1);box-shadow:0 6px 18px rgba(0,0,0,.28);background:#fff}
+.slot.secondary{transition:width .12s ease,box-shadow .12s ease}
+/* ширину меняем по-настоящему (не transform:scale — он только рисует крупнее
+   то же самое, а обрезанный по ellipsis текст обратно не появляется), чтобы
+   "Визажист", "Марго" и подписи моделей реально помещались целиком */
+.slot.secondary:hover{z-index:50;width:150px!important;box-shadow:0 6px 18px rgba(0,0,0,.28);background:#fff}
+.slot.secondary:hover .ti{white-space:normal;overflow:visible}
 .slot.secondary:hover .slot-marker.compact .slot-marker-time,
 .slot.secondary:hover .slot-marker.compact .slot-marker-avatars .av span{display:block}
 .ptimes{margin:2px 0 8px}
@@ -554,7 +558,11 @@ function buildCalendar(editable){
       var untimedIds = (s.participant_ids||[]).filter(function(pid){ return timedIds.indexOf(pid) < 0; });
       var tooltipLabel = baseLabel + (tooltipTimes ? ' — ' + tooltipTimes : '');
       var shownLabel = secondary ? catLabelShort(s) : baseLabel;
-      return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '" title="' + esc(s.start + '–' + s.end + ' ' + tooltipLabel) + '">' +
+      // Родной тултип браузера (title) нужен только широким блокам — у узких
+      // при наведении и так раскрывается сам блок с подписями, а два всплытия
+      // сразу (родной тултип + наш раскрытый блок) только мешают друг другу.
+      var titleAttr = secondary ? '' : ' title="' + esc(s.start + '–' + s.end + ' ' + tooltipLabel) + '"';
+      return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '"' + titleAttr + '>' +
         markers +
         '<div class="t">' + s.start + '–' + s.end + '</div>' +
         '<div class="ti">' + esc(shownLabel) + '</div>' +
