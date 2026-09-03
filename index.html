@@ -102,7 +102,8 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
    то же самое, а обрезанный по ellipsis текст обратно не появляется), чтобы
    "Визажист", "Марго" и подписи моделей реально помещались целиком */
 .slot.secondary:hover{z-index:50;width:150px!important;box-shadow:0 6px 18px rgba(0,0,0,.28);background:#fff}
-.slot.secondary:hover .ti{white-space:normal;overflow:visible}
+.slot.secondary:hover .t,.slot.secondary:hover .ti{font-size:11px}
+.slot.secondary:hover .ti{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.3px}
 .slot.secondary:hover .slot-marker.compact .slot-marker-time,
 .slot.secondary:hover .slot-marker.compact .slot-marker-avatars .av span{display:block}
 .ptimes{margin:2px 0 8px}
@@ -531,7 +532,12 @@ function buildCalendar(editable){
           // близко к краю", и модель пропадала с календаря вообще. Не
           // отбрасываем, просто визуально сдвигаем ниже строки-заголовка
           // блока (время/название), чтобы не наезжать на неё.
-          var headroom = secondary ? 14 : 20;
+          // Отступ рассчитан на заголовок в развёрнутом виде (при наведении
+          // шрифт узких блоков увеличивается до размера обычных — см. CSS
+          // ".slot.secondary:hover .ti"), поэтому запас одинаковый везде.
+          // Измерено реальным рендером: время (9→11px) + название (11px) +
+          // паддинг блока — вместе занимают около 34px.
+          var headroom = 36;
           var visualTop = Math.max(relTop, headroom);
           if (relTop < -1 || relTop > h + 1) return '';
           var bandH = r.end ? Math.max(0, topPx(r.end) - topPx(r.start)) : 0;
