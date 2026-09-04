@@ -510,7 +510,13 @@ function buildCalendar(editable){
         wPct = zone / cols;
         lPct = (100 - zone) + col * wPct;
       }
-      var cls = 'slot cat-' + s.category + (isLev(s) ? ' lev' : '') + (secondary ? ' secondary' : '');
+      // Узко бывает по двум разным причинам: слот пересекается со Львом
+      // (secondary, своя 36%-зона) ИЛИ просто делит место с другими
+      // одновременными слотами (cols>1, обычное деление колонки). В обоих
+      // случаях одинаково не помещается текст — значит, и компактный вид
+      // с раскрытием по наведению нужен в обоих случаях, а не только у Льва.
+      var narrow = secondary || cols > 1;
+      var cls = 'slot cat-' + s.category + (isLev(s) ? ' lev' : '') + (narrow ? ' secondary' : '');
       if (FILTER && !myScopedPt) {
         var mine = (s.participant_ids||[]).indexOf(FILTER) >= 0;
         cls += mine ? ' mine' : ' dim';
@@ -589,7 +595,7 @@ function buildCalendar(editable){
           var offset = visualTop - relTop;
           var timeStyle = offset > 0 ? ' style="top:' + (-7 + offset) + 'px"' : '';
           var avStyle = offset > 0 ? ' style="top:' + (2 + offset) + 'px"' : '';
-          return '<div class="slot-marker' + (bandH>0?' has-range':'') + (secondary?' compact':'') + '" style="top:' + relTop + 'px' + bandStyle + '">' +
+          return '<div class="slot-marker' + (bandH>0?' has-range':'') + (narrow?' compact':'') + '" style="top:' + relTop + 'px' + bandStyle + '">' +
             '<span class="slot-marker-time"' + timeStyle + '>' + esc(rangeLabel(r)) + '</span>' +
             '<div class="slot-marker-avatars"' + avStyle + '>' + avs + '</div>' +
           '</div>';
@@ -598,11 +604,11 @@ function buildCalendar(editable){
       // Модели без выставленного времени — обычной строкой аватарок сверху.
       var untimedIds = (s.participant_ids||[]).filter(function(pid){ return timedIds.indexOf(pid) < 0; });
       var tooltipLabel = baseLabel + (tooltipTimes ? ' — ' + tooltipTimes : '');
-      var shownLabel = secondary ? catLabelShort(s) : baseLabel;
+      var shownLabel = narrow ? catLabelShort(s) : baseLabel;
       // Родной тултип браузера (title) нужен только широким блокам — у узких
       // при наведении и так раскрывается сам блок с подписями, а два всплытия
       // сразу (родной тултип + наш раскрытый блок) только мешают друг другу.
-      var titleAttr = secondary ? '' : ' title="' + esc(s.start + '–' + s.end + ' ' + tooltipLabel) + '"';
+      var titleAttr = narrow ? '' : ' title="' + esc(s.start + '–' + s.end + ' ' + tooltipLabel) + '"';
       return '<div class="' + cls + '" data-slot="' + s.id + '" style="' + style + '"' + titleAttr + '>' +
         markers +
         '<div class="t">' + s.start + '–' + s.end + '</div>' +
