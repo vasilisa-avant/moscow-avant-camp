@@ -65,7 +65,11 @@ h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;
   background-image:repeating-linear-gradient(to bottom, var(--line-2), var(--line-2) 1px, transparent 1px, transparent var(--row-h));cursor:copy}
 .daycol .off{position:absolute;left:0;right:0;top:0;background:repeating-linear-gradient(45deg,#fafafa,#fafafa 6px,#f2f2f2 6px,#f2f2f2 12px);pointer-events:none;border-bottom:1px dashed var(--line)}
 .daycol .levwin{position:absolute;left:0;right:0;border-top:1px dashed var(--cat-shoot);border-bottom:1px dashed var(--cat-shoot);pointer-events:none;z-index:5;opacity:.6}
-.slot{position:absolute;border-left:3px solid;border-radius:2px;padding:3px 6px;overflow:hidden;font-size:10px;cursor:pointer;box-sizing:border-box}
+/* z-index:0 — свой стек отрисовки для каждого слота, иначе его собственный
+   z-index:3 (у пунктирной шкалы .slot-marker внутри) "пробивает" соседние
+   слоты по всей странице вместо того, чтобы прятаться под тем, что рисуется
+   поверх (второстепенные узкие блоки справа) */
+.slot{position:absolute;z-index:0;border-left:3px solid;border-radius:2px;padding:3px 6px;overflow:hidden;font-size:10px;cursor:pointer;box-sizing:border-box}
 .slot.cat-shoot{background:var(--cat-shoot-bg);border-color:var(--cat-shoot)}
 .slot.lev{background:var(--cat-lev-bg);border-color:var(--cat-lev)}
 .slot.cat-class{background:var(--cat-class-bg);border-color:var(--cat-class)}
